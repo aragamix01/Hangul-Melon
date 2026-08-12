@@ -1,0 +1,113 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #fbf0f4;
+}
+
+body {
+  font-family: var(--font-latin), var(--font-thai), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #4a3540;
+}
+
+a {
+  color: #e58aaf;
+}
+
+a:hover {
+  color: #c96a92;
+}
+
+button {
+  font-family: inherit;
+}
+
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid #f2a0be;
+  outline-offset: 2px;
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.86);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hover states, expressed once instead of per-element inline handlers. */
+.btn-pink:hover {
+  background: #ee93b4 !important;
+}
+.btn-blue:hover {
+  background: #92c1d3 !important;
+}
+.btn-ghost:hover {
+  border-color: #e9c4d4 !important;
+}
+.tile:hover {
+  border-color: #f2a0be !important;
+}
+.tile-blue:hover {
+  border-color: #9cc8da !important;
+}
+.tile-purple:hover {
+  border-color: #c0aede !important;
+}
+.lesson-card:hover {
+  border-color: #f2a0be !important;
+  transform: translateY(-2px);
+}
+.nav-btn:hover {
+  background: #fde8f0 !important;
+}
+
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
