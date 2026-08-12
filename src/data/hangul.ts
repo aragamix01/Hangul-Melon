@@ -24,8 +24,6 @@ export interface Jamo {
   position: string;
   /** Mnemonic */
   hint: string;
-  /** 1–8, see STAGES below */
-  stage: number;
   /**
    * Present only for the four plain (lenis) obstruents ㄱ ㄷ ㅂ ㅈ, whose sound
    * genuinely changes with position. See VOICING.
@@ -159,7 +157,7 @@ const vowelRows: Row[] = [
   ["ㅢ", "ui", "의 ui", "อึย", 2, ["ㅡ", "ㅣ"], "เขียนไว้ใต้และขวา", "ㅡ + ㅣ ออกเร็ว ๆ ติดกัน"],
 ];
 
-function toJamo(rows: Row[], kind: JamoKind, stageOf: (ch: string) => number): Jamo[] {
+function toJamo(rows: Row[], kind: JamoKind): Jamo[] {
   return rows.map((r) => {
     const p = PRON[r[0]];
     if (!p) throw new Error(`pronunciations.json is missing an entry for ${r[0]}`);
@@ -175,7 +173,6 @@ function toJamo(rows: Row[], kind: JamoKind, stageOf: (ch: string) => number): J
       strokes: r[5],
       position: r[6],
       hint: r[7],
-      stage: stageOf(r[0]),
       positions: VOICING[r[0]],
     };
   });
@@ -207,7 +204,7 @@ export interface Stage {
  * This order follows the derivation instead, and alternates consonant and vowel
  * stages so the student can read real syllables from stage 2 onward.
  */
-export const STAGES: Stage[] = [
+export const STAGES_DERIVATION: Stage[] = [
   {
     n: 1, kind: "consonant", glyph: "ㄱ",
     chars: ["ㄱ", "ㄴ", "ㅁ", "ㅅ", "ㅇ"],
@@ -274,26 +271,112 @@ export const STAGES: Stage[] = [
   },
 ];
 
-const stageIndex = new Map<string, number>();
-STAGES.forEach((s) => s.chars.forEach((ch) => stageIndex.set(ch, s.n)));
-const stageOf = (ch: string) => stageIndex.get(ch) ?? 99;
+/**
+ * The order Korean itself uses: 가나다순, as fixed by 한글 맞춤법 제4항 and split
+ * the way Korean textbooks and 한글학교 present it — 기본자음 14, 기본모음 10,
+ * 쌍자음 5, 복합모음 11.
+ *
+ * This is the default. It is the order of every dictionary, index, class
+ * register and textbook table of contents a student will ever meet, so a
+ * learner trained on anything else cannot find their own name on a list.
+ */
+export const STAGES_CANONICAL: Stage[] = [
+  {
+    n: 1, kind: "consonant", glyph: "ㄱ",
+    chars: ["ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"],
+    title: "พยัญชนะพื้นฐาน 14 ตัว",
+    sub: "기본자음 · ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ",
+    rule: "นี่คือลำดับ 가나다 ที่ใช้จริงทุกที่ — พจนานุกรม สารบัญหนังสือ รายชื่อนักเรียน ท่องให้ขึ้นใจตามลำดับนี้",
+    tint: "#FDE8F0", border: "#F3DDE6",
+  },
+  {
+    n: 2, kind: "vowel", glyph: "ㅏ",
+    chars: ["ㅏ", "ㅑ", "ㅓ", "ㅕ", "ㅗ", "ㅛ", "ㅜ", "ㅠ", "ㅡ", "ㅣ"],
+    title: "สระพื้นฐาน 10 ตัว",
+    sub: "기본모음 · ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ",
+    rule: "มาเป็นคู่: ㅏ/ㅑ · ㅓ/ㅕ · ㅗ/ㅛ · ㅜ/ㅠ ตัวที่มีสองขีดคือตัวเดิมที่เติมเสียง ย ข้างหน้า",
+    tint: "#EAF2F6", border: "#D5E7EF",
+  },
+  {
+    n: 3, kind: "consonant", glyph: "ㄲ",
+    chars: ["ㄲ", "ㄸ", "ㅃ", "ㅆ", "ㅉ"],
+    title: "พยัญชนะคู่ 5 ตัว",
+    sub: "쌍자음 · ㄲ ㄸ ㅃ ㅆ ㅉ",
+    rule: "เขียนซ้ำสองตัว = เกร็งคอแล้วดีดออก ไม่พ่นลม ㄸ ㅃ ㅉ ใช้เป็นตัวสะกดไม่ได้",
+    tint: "#FDE8F0", border: "#F3DDE6",
+  },
+  {
+    n: 4, kind: "vowel", glyph: "ㅘ",
+    chars: ["ㅐ", "ㅒ", "ㅔ", "ㅖ", "ㅘ", "ㅙ", "ㅚ", "ㅝ", "ㅞ", "ㅟ", "ㅢ"],
+    title: "สระประสม 11 ตัว",
+    sub: "복합모음 · ㅐ ㅒ ㅔ ㅖ ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ",
+    rule: "สระพื้นฐาน + ㅣ (ㅐ ㅒ ㅔ ㅖ) หรือ ㅗ/ㅜ นำหน้าเป็นเสียง ว (ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ) และ ㅢ = ㅡ + ㅣ",
+    tint: "#EAF2F6", border: "#D5E7EF",
+  },
+];
 
-export const CONSONANTS: Jamo[] = toJamo(consonantRows, "consonant", stageOf);
-export const VOWELS: Jamo[] = toJamo(vowelRows, "vowel", stageOf);
+export const CONSONANTS: Jamo[] = toJamo(consonantRows, "consonant");
+export const VOWELS: Jamo[] = toJamo(vowelRows, "vowel");
 
 /** Every jamo, keyed by character. */
 export const JAMO_BY_CHAR: Record<string, Jamo> = {};
 [...CONSONANTS, ...VOWELS].forEach((j) => (JAMO_BY_CHAR[j.ch] = j));
 
-/**
- * The full 40-letter deck in teaching order — stage 1 through 8, flattened.
- * This is the order the flashcard deck walks.
- */
-export const LEARNING_ORDER: Jamo[] = STAGES.flatMap((s) =>
-  s.chars.map((ch) => JAMO_BY_CHAR[ch]),
-);
+export const TOTAL_LETTERS = CONSONANTS.length + VOWELS.length; // 40
 
-export const TOTAL_LETTERS = LEARNING_ORDER.length; // 40
+export type CurriculumId = "canonical" | "derivation";
+
+export interface Curriculum {
+  id: CurriculumId;
+  /** Short label for the switcher */
+  label: string;
+  sublabel: string;
+  /** One line on who this order is for */
+  blurb: string;
+  stages: Stage[];
+  /** All 40 letters flattened in this curriculum's teaching order */
+  order: Jamo[];
+  /** Which stage a letter belongs to in this curriculum */
+  stageOf: (ch: string) => number;
+}
+
+function buildCurriculum(
+  id: CurriculumId,
+  label: string,
+  sublabel: string,
+  blurb: string,
+  stages: Stage[],
+): Curriculum {
+  const index = new Map<string, number>();
+  stages.forEach((s) => s.chars.forEach((ch) => index.set(ch, s.n)));
+
+  const order = stages.flatMap((s) => s.chars.map((ch) => JAMO_BY_CHAR[ch]));
+  if (order.length !== TOTAL_LETTERS || order.some((j) => !j)) {
+    throw new Error(`Curriculum "${id}" does not cover all ${TOTAL_LETTERS} letters exactly once`);
+  }
+
+  return { id, label, sublabel, blurb, stages, order, stageOf: (ch) => index.get(ch) ?? 0 };
+}
+
+export const CURRICULA: Record<CurriculumId, Curriculum> = {
+  canonical: buildCurriculum(
+    "canonical",
+    "가나다",
+    "ลำดับมาตรฐาน",
+    "ลำดับที่โรงเรียนเกาหลีและพจนานุกรมใช้จริง — 14 + 10 + 5 + 11",
+    STAGES_CANONICAL,
+  ),
+  derivation: buildCurriculum(
+    "derivation",
+    "จำง่าย",
+    "เรียงตามรูป",
+    "เรียงตามการงอกของรูปตัวอักษร จำง่ายกว่า แต่ไม่ใช่ลำดับที่ใช้ค้นพจนานุกรม",
+    STAGES_DERIVATION,
+  ),
+};
+
+/** Her order is the default. */
+export const DEFAULT_CURRICULUM: CurriculumId = "canonical";
 
 /**
  * A demo syllable is never the letter alone — a consonant is padded with ㅏ,

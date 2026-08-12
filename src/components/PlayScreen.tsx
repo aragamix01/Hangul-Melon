@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LEARNING_ORDER, demoParts, type Jamo } from "@/data/hangul";
+import { demoParts, type Curriculum, type Jamo } from "@/data/hangul";
 import type { Progress } from "@/lib/progress";
 import { speakKo } from "@/lib/audio";
 import { SpeakerIcon } from "./SpeakerButton";
@@ -18,14 +18,20 @@ const shuffle = <T,>(a: T[]): T[] =>
  * enough of those, fall back to the first ten of the teaching order so the
  * games are never empty and never ambush a beginner with ㅢ.
  */
-function quizPool(progress: Progress): Jamo[] {
-  const learned = LEARNING_ORDER.filter((j) => progress.learned[j.ch]);
-  return learned.length >= 5 ? learned : LEARNING_ORDER.slice(0, 10);
+function quizPool(curriculum: Curriculum, progress: Progress): Jamo[] {
+  const learned = curriculum.order.filter((j) => progress.learned[j.ch]);
+  return learned.length >= 5 ? learned : curriculum.order.slice(0, 10);
 }
 
-export function PlayScreen({ progress }: { progress: Progress }) {
+export function PlayScreen({
+  curriculum,
+  progress,
+}: {
+  curriculum: Curriculum;
+  progress: Progress;
+}) {
   const [mode, setMode] = useState<"match" | "listen">("match");
-  const pool = useMemo(() => quizPool(progress), [progress]);
+  const pool = useMemo(() => quizPool(curriculum, progress), [curriculum, progress]);
 
   const tab = (on: boolean): React.CSSProperties => ({
     border: "none",

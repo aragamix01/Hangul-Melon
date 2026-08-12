@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LEARNING_ORDER, STAGES, demoParts, type Jamo } from "@/data/hangul";
+import { TOTAL_LETTERS, demoParts, type Curriculum, type Jamo } from "@/data/hangul";
 import type { Progress } from "@/lib/progress";
 import { speakKo } from "@/lib/audio";
 import { SpeakerButton, SpeakerIcon } from "./SpeakerButton";
 import { C, KO } from "./theme";
 
 export function CardsScreen({
+  curriculum,
   stage,
   onStage,
   progress,
   onLearned,
 }: {
+  curriculum: Curriculum;
   /** 0 = show all 40 in teaching order */
   stage: number;
   onStage: (n: number) => void;
@@ -20,16 +22,20 @@ export function CardsScreen({
   onLearned: (ch: string) => void;
 }) {
   const deck: Jamo[] = useMemo(
-    () => (stage === 0 ? LEARNING_ORDER : LEARNING_ORDER.filter((j) => j.stage === stage)),
-    [stage],
+    () =>
+      stage === 0
+        ? curriculum.order
+        : curriculum.order.filter((j) => curriculum.stageOf(j.ch) === stage),
+    [curriculum, stage],
   );
 
   const [index, setIndex] = useState(0);
-  useEffect(() => setIndex(0), [stage]);
+  useEffect(() => setIndex(0), [stage, curriculum]);
 
   const idx = Math.min(index, deck.length - 1);
   const card = deck[idx];
-  const stageInfo = STAGES.find((s) => s.n === card.stage)!;
+  const cardStage = curriculum.stageOf(card.ch);
+  const stageInfo = curriculum.stages.find((s) => s.n === cardStage)!;
 
   const next = () => {
     onLearned(card.ch);
@@ -39,7 +45,12 @@ export function CardsScreen({
 
   return (
     <div>
-      <StageChips stage={stage} onStage={onStage} progress={progress} />
+      <StageChips
+        curriculum={curriculum}
+        stage={stage}
+        onStage={onStage}
+        progress={progress}
+      />
 
       <div
         style={{
@@ -74,7 +85,7 @@ export function CardsScreen({
               {idx + 1} / {deck.length}
             </span>
             <span>
-              {card.kind === "consonant" ? "พยัญชนะ CONSONANT" : "สระ VOWEL"} · ด่าน {card.stage}
+              {card.kind === "consonant" ? "พยัญชนะ CONSONANT" : "สระ VOWEL"} · ด่าน {cardStage}
             </span>
           </div>
 
@@ -311,7 +322,9 @@ export function CardsScreen({
                 marginBottom: 12,
               }}
             >
-              {stage === 0 ? "ทั้งหมด 40 ตัว · ALL LETTERS" : `ด่าน ${stage} · THIS STAGE`}
+              {stage === 0
+                ? `ทั้งหมด ${TOTAL_LETTERS} ตัว · ALL LETTERS`
+                : `ด่าน ${stage} · THIS STAGE`}
             </div>
             <div
               style={{
@@ -359,10 +372,12 @@ export function CardsScreen({
 }
 
 function StageChips({
+  curriculum,
   stage,
   onStage,
   progress,
 }: {
+  curriculum: Curriculum;
   stage: number;
   onStage: (n: number) => void;
   progress: Progress;
@@ -392,7 +407,7 @@ function StageChips({
         maxWidth: "100%",
       }}
     >
-      {STAGES.map((s) => {
+      {curriculum.stages.map((s) => {
         const complete = s.chars.every((ch) => progress.learned[ch]);
         return (
           <button key={s.n} type="button" onClick={() => onStage(s.n)} style={chip(stage === s.n)}>
@@ -402,7 +417,7 @@ function StageChips({
         );
       })}
       <button type="button" onClick={() => onStage(0)} style={chip(stage === 0)}>
-        ทั้งหมด 40
+        ทั้งหมด {TOTAL_LETTERS}
       </button>
     </div>
   );

@@ -15,21 +15,37 @@ synthesis. See [Audio](#audio) to generate the real clips.
 
 ---
 
-## Why the letters are in this order
+## Two teaching orders
 
-Dictionary order is `ㄱ ㄲ ㄴ ㄷ ㄸ ㄹ ㅁ ㅂ ㅃ ㅅ ㅆ ㅇ ㅈ ㅉ ㅊ ㅋ ㅌ ㅍ ㅎ`. That order is
-useless for a beginner: it puts the tense `ㄲ` second, before the student has any reason to
-know what `ㄱ` is, and it separates `ㄱ` from `ㅋ` even though `ㅋ` is literally `ㄱ` with one
-more stroke.
+The app ships two orders and lets the student switch between them from the home screen.
+Progress is stored per letter, so switching never loses anything already learned.
 
-Hangul was designed in 1443 as a **derivation system**:
+### 가나다 — canonical (the default)
 
-- Five consonant shapes copied from the speech organs — `ㄱ ㄴ ㅁ ㅅ ㅇ`
-- Three vowel strokes — a dot (sky), a horizontal line (earth), a vertical line (person)
-- Two transformations — **add a stroke = add a puff of air**, **double the letter = tense it**
+The order Korean itself uses, fixed by 한글 맞춤법 제4항, split the way Korean textbooks and
+한글학교 present it:
 
-This app teaches that structure directly, in 8 stages, alternating consonants and vowels so
-the student can read real syllables from stage 2 onward:
+| Stage | Group | Letters |
+|---|---|---|
+| 1 | 기본자음 (14) | `ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ` |
+| 2 | 기본모음 (10) | `ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ` |
+| 3 | 쌍자음 (5) | `ㄲ ㄸ ㅃ ㅆ ㅉ` |
+| 4 | 복합모음 (11) | `ㅐ ㅒ ㅔ ㅖ ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ` |
+
+This is the default because it is the order of every dictionary, index, class register and
+table of contents a learner will ever meet. A student trained on anything else cannot find
+their own name on a list.
+
+### จำง่าย — shape derivation (optional)
+
+Hangul was designed in 1443 as a derivation system: five consonant shapes copied from the
+speech organs, three vowel strokes, and two transformations — **add a stroke = add a puff of
+air**, **double the letter = tense it**. Canonical order interleaves those transformations
+with the base shapes, so a beginner meets `ㄲ` before having any reason to know what `ㄱ` is,
+and `ㅋ` sits far from the `ㄱ` it is literally built from.
+
+This order follows the derivation instead, alternating consonants and vowels so the student
+can read real syllables from stage 2 onward:
 
 | Stage | Letters | The one rule it adds |
 |---|---|---|
@@ -42,8 +58,16 @@ the student can read real syllables from stage 2 onward:
 | 7 | `ㄲ ㄸ ㅃ ㅆ ㅉ` | Doubled = tense. Opposite of stage 5: throat tightens, **no** air. |
 | 8 | `ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ` | `ㅗ`/`ㅜ` in front = a *w* glide. `ㅙ ㅚ ㅞ` are all the same sound in practice. |
 
-Each stage counts consonants and vowels that a student can actually *combine*, so the
-Syllable Builder is useful from day one instead of day thirty.
+Easier to memorise, useless for looking anything up. Offered as an alternative, not the
+default.
+
+### Adding or changing an order
+
+Both live as plain data in [`src/data/hangul.ts`](src/data/hangul.ts) — `STAGES_CANONICAL`
+and `STAGES_DERIVATION`, assembled by `buildCurriculum()` into the `CURRICULA` map. Edit a
+`chars` array and the home path, flashcard deck, stage chips, builder pickers and quiz pool
+all follow. `buildCurriculum` throws at import time if an order doesn't cover all 40 letters
+exactly once, so a typo fails the build rather than silently dropping a letter.
 
 The order lives in `STAGES` in [`src/data/hangul.ts`](src/data/hangul.ts) — reorder that
 array and the whole app (home path, flashcard deck, builder pickers, quiz pool) follows.

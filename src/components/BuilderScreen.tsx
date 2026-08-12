@@ -1,26 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CONSONANTS,
   FINAL_ORDER,
-  LEARNING_ORDER,
   VOWELS,
   composeSyllable,
   romanizeSyllable,
+  type Curriculum,
 } from "@/data/hangul";
 import { speakKo } from "@/lib/audio";
 import { C, KO } from "./theme";
 
-// Pickers follow the teaching order, so the builder reinforces the lesson order
-// rather than dropping the student back into dictionary order.
-const INITIALS = LEARNING_ORDER.filter((j) => j.kind === "consonant").map((j) => j.ch);
-const MEDIALS = LEARNING_ORDER.filter((j) => j.kind === "vowel").map((j) => j.ch);
-
 const CONSONANT_SET = new Set(CONSONANTS.map((j) => j.ch));
 const VOWEL_SET = new Set(VOWELS.map((j) => j.ch));
 
-export function BuilderScreen() {
+export function BuilderScreen({ curriculum }: { curriculum: Curriculum }) {
+  // Pickers follow whichever teaching order is active, so the builder reinforces
+  // the lesson order instead of contradicting it.
+  const INITIALS = useMemo(
+    () => curriculum.order.filter((j) => j.kind === "consonant").map((j) => j.ch),
+    [curriculum],
+  );
+  const MEDIALS = useMemo(
+    () => curriculum.order.filter((j) => j.kind === "vowel").map((j) => j.ch),
+    [curriculum],
+  );
+
   const [initial, setInitial] = useState("ㄱ");
   const [medial, setMedial] = useState("ㅏ");
   const [final, setFinal] = useState("");

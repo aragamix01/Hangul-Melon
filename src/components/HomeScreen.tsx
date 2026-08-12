@@ -1,24 +1,29 @@
 "use client";
 
-import { STAGES, TOTAL_LETTERS } from "@/data/hangul";
+import { CURRICULA, TOTAL_LETTERS, type Curriculum, type CurriculumId } from "@/data/hangul";
 import type { Progress } from "@/lib/progress";
 import { C, KO } from "./theme";
 import type { Screen } from "./Nav";
 
 export function HomeScreen({
+  curriculum,
+  onCurriculum,
   progress,
   onStartStage,
   onGo,
 }: {
+  curriculum: Curriculum;
+  onCurriculum: (id: CurriculumId) => void;
   progress: Progress;
   onStartStage: (stage: number) => void;
   onGo: (s: Screen) => void;
 }) {
   const learnedCount = Object.keys(progress.learned).length;
+  const stages = curriculum.stages;
 
   // Resume at the first stage that isn't finished yet.
   const nextStage =
-    STAGES.find((s) => s.chars.some((ch) => !progress.learned[ch])) ?? STAGES[0];
+    stages.find((s) => s.chars.some((ch) => !progress.learned[ch])) ?? stages[0];
 
   return (
     <div style={{ animation: "pop 0.35s ease both" }}>
@@ -59,7 +64,7 @@ export function HomeScreen({
               textWrap: "pretty",
             }}
           >
-            อักษรเกาหลี 40 ตัว ใน 8 ด่าน
+            อักษรเกาหลี {TOTAL_LETTERS} ตัว ใน {stages.length} ด่าน
           </h1>
           <p
             style={{
@@ -70,8 +75,7 @@ export function HomeScreen({
               margin: "0 0 18px",
             }}
           >
-            ไม่ได้เรียงตามพจนานุกรม แต่เรียงตามวิธีที่ตัวอักษร &ldquo;งอก&rdquo; ออกมาจากกัน —
-            จำ 5 รูปแรกได้ ที่เหลือคือการเติมขีด
+            {curriculum.blurb}
           </p>
           <button
             type="button"
@@ -131,9 +135,21 @@ export function HomeScreen({
 
       <ProgressBar value={learnedCount} max={TOTAL_LETTERS} />
 
-      <h2 style={{ fontWeight: 800, fontSize: 15, margin: "26px 4px 12px" }}>
-        8 ด่าน · Learning path
-      </h2>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+          margin: "26px 4px 12px",
+        }}
+      >
+        <h2 style={{ fontWeight: 800, fontSize: 15, margin: 0 }}>
+          {stages.length} ด่าน · Learning path
+        </h2>
+        <CurriculumSwitch curriculum={curriculum} onCurriculum={onCurriculum} />
+      </div>
       <div
         style={{
           display: "grid",
@@ -141,7 +157,7 @@ export function HomeScreen({
           gap: 14,
         }}
       >
-        {STAGES.map((s) => {
+        {stages.map((s) => {
           const done = s.chars.filter((ch) => progress.learned[ch]).length;
           const complete = done === s.chars.length;
           return (
@@ -285,6 +301,68 @@ export function HomeScreen({
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Two orders ship: 가나다 (the order Korean actually uses, and the default) and
+ * the shape-derivation order (easier to memorise, useless for a dictionary).
+ * Progress is stored per letter, so switching keeps everything already learned.
+ */
+function CurriculumSwitch({
+  curriculum,
+  onCurriculum,
+}: {
+  curriculum: Curriculum;
+  onCurriculum: (id: CurriculumId) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 4,
+        background: C.pinkTrack,
+        padding: 4,
+        borderRadius: 999,
+      }}
+      role="group"
+      aria-label="ลำดับการเรียน"
+    >
+      {Object.values(CURRICULA).map((c) => {
+        const on = c.id === curriculum.id;
+        return (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onCurriculum(c.id)}
+            aria-pressed={on}
+            title={c.blurb}
+            style={{
+              border: "none",
+              cursor: "pointer",
+              borderRadius: 999,
+              padding: "7px 14px",
+              display: "grid",
+              justifyItems: "center",
+              gap: 1,
+              background: on ? C.surface : "transparent",
+              color: on ? C.ink : C.inkFaintest,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 800,
+                fontFamily: c.id === "canonical" ? KO : undefined,
+              }}
+            >
+              {c.label}
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.75 }}>{c.sublabel}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
