@@ -53,9 +53,18 @@ export interface PositionSound {
  *   - Word-initially there is nothing before them, so they come out voiceless
  *     and (in modern Seoul speech) lightly aspirated. A Thai ear hears ค ท พ ช.
  *   - Between two voiced sounds — i.e. from the second syllable onward — they
- *     assimilate and become voiced [ɡ d b dʑ]. Thai has no voiced stops, so the
- *     nearest match flips to the unaspirated ก ต ป จ.
+ *     assimilate and become voiced [ɡ d b dʑ].
  *   - Syllable-finally they are unreleased, and ㅈ neutralises to [t].
+ *
+ * The medial values matter for the Thai mapping, because Thai has a three-way
+ * stop contrast of its own and two of these land on it exactly:
+ *
+ *     ㄷ ท [tʰ] · ด [d] · ต [t] ㄸ      ㅂ พ [pʰ] · บ [b] · ป [p] ㅃ
+ *
+ * So voiced ㄷ is ด and voiced ㅂ is บ — not ต and ป, which are the *tense*
+ * ㄸ ㅃ. Thai has no voiced velar or voiced affricate, so ㄱ and ㅈ collapse
+ * instead: their medial value falls back to ก and จ, the same letters used for
+ * tense ㄲ ㅉ, and the student has to add the voicing by ear.
  *
  * Revised Romanization writes the medial value ("g", "d", "b", "j"), which is
  * exactly why 가방 looks like "gabang" but sounds closer to "kabang".
@@ -66,22 +75,22 @@ export interface PositionSound {
 export const VOICING: Record<string, PositionSound[]> = {
   "ㄱ": [
     { label: "พยางค์แรก", thai: "ค", explain: "ต้นคำไม่มีเสียงก้อง ออกมาเป็น ค เบา ๆ", word: "가방", rom: "kabang", gloss: "กระเป๋า" },
-    { label: "พยางค์ที่ 2+", thai: "ก", explain: "อยู่ระหว่างเสียงก้อง จึงกลายเป็นเสียงก้อง ฟังเป็น ก", word: "아기", rom: "agi", gloss: "เด็กทารก" },
+    { label: "พยางค์ที่ 2+", thai: "ก", explain: "กลายเป็นเสียงก้อง [g] ซึ่งไทยไม่มี — ใกล้ที่สุดคือ ก แต่ให้ลำคอสั่น", word: "아기", rom: "agi", gloss: "เด็กทารก" },
     { label: "ตัวสะกด", thai: "ก", explain: "ตัวสะกดไม่ปล่อยลม ค้างไว้ที่คอ", word: "한국", rom: "hanguk", gloss: "ประเทศเกาหลี" },
   ],
   "ㄷ": [
     { label: "พยางค์แรก", thai: "ท", explain: "ต้นคำไม่มีเสียงก้อง ออกมาเป็น ท เบา ๆ", word: "다리", rom: "tari", gloss: "ขา / สะพาน" },
-    { label: "พยางค์ที่ 2+", thai: "ต", explain: "อยู่ระหว่างเสียงก้อง จึงกลายเป็นเสียงก้อง ฟังเป็น ต", word: "어디", rom: "eodi", gloss: "ที่ไหน" },
+    { label: "พยางค์ที่ 2+", thai: "ด", explain: "อยู่ระหว่างเสียงก้อง จึงกลายเป็นเสียงก้อง = ด ของไทยพอดีเป๊ะ", word: "어디", rom: "eodi", gloss: "ที่ไหน" },
     { label: "ตัวสะกด", thai: "ท", explain: "ตัวสะกดไม่ปล่อยลม ค้างไว้ที่ปลายลิ้น", word: "듣다", rom: "teutta", gloss: "ฟัง" },
   ],
   "ㅂ": [
     { label: "พยางค์แรก", thai: "พ", explain: "ต้นคำไม่มีเสียงก้อง ออกมาเป็น พ เบา ๆ", word: "바다", rom: "pada", gloss: "ทะเล" },
-    { label: "พยางค์ที่ 2+", thai: "ป", explain: "อยู่ระหว่างเสียงก้อง จึงกลายเป็นเสียงก้อง ฟังเป็น ป", word: "아버지", rom: "abeoji", gloss: "คุณพ่อ" },
+    { label: "พยางค์ที่ 2+", thai: "บ", explain: "อยู่ระหว่างเสียงก้อง จึงกลายเป็นเสียงก้อง = บ ของไทยพอดีเป๊ะ", word: "아버지", rom: "abeoji", gloss: "คุณพ่อ" },
     { label: "ตัวสะกด", thai: "พ", explain: "ตัวสะกดไม่ปล่อยลม ปิดปากค้างไว้", word: "밥", rom: "pap", gloss: "ข้าว" },
   ],
   "ㅈ": [
     { label: "พยางค์แรก", thai: "ช", explain: "ต้นคำไม่มีเสียงก้อง ออกมาเป็น ช เบา ๆ", word: "자다", rom: "chada", gloss: "นอน" },
-    { label: "พยางค์ที่ 2+", thai: "จ", explain: "อยู่ระหว่างเสียงก้อง จึงกลายเป็นเสียงก้อง ฟังเป็น จ", word: "아저씨", rom: "ajeossi", gloss: "คุณลุง" },
+    { label: "พยางค์ที่ 2+", thai: "จ", explain: "กลายเป็นเสียงก้อง [dʑ] ซึ่งไทยไม่มี — ใกล้ที่สุดคือ จ แต่ให้ลำคอสั่น", word: "아저씨", rom: "ajeossi", gloss: "คุณลุง" },
     { label: "ตัวสะกด", thai: "ท", explain: "ตัวสะกดยุบเป็นเสียง ท เหมือน ㄷ ㅅ ㅌ", word: "낮", rom: "nat", gloss: "ตอนกลางวัน" },
   ],
 };
@@ -106,9 +115,9 @@ const consonantRows: Row[] = [
   ["ㅇ", "– / ng", "이응 ieung", "อ / ง", 1, ["วงกลมทวนเข็ม"], "ต้นคำ = ไม่มีเสียง (เป็นที่วางเฉย ๆ), ตัวสะกด = ง", "วงกลม = ลำคอที่เปิดโล่ง"],
 
   // ---- Stage 3: plain consonants derived by adding one stroke ----
-  ["ㄷ", "d / t", "디귿 digeut", "ท → ต", 3, ["เส้นบน", "เส้นซ้ายลง", "เส้นล่าง"], "พยางค์แรก = ท · พยางค์ที่ 2+ = ต · ตัวสะกด = ท", "ㄴ + หลังคา = ปิดลมแล้วปล่อย"],
+  ["ㄷ", "d / t", "디귿 digeut", "ท → ด", 3, ["เส้นบน", "เส้นซ้ายลง", "เส้นล่าง"], "พยางค์แรก = ท · พยางค์ที่ 2+ = ด · ตัวสะกด = ท", "ㄴ + หลังคา = ปิดลมแล้วปล่อย"],
   ["ㄹ", "r / l", "리을 rieul", "ร / ล", 5, ["เส้นบนขวา", "หักลง", "เส้นกลาง", "หักลง", "เส้นล่าง"], "ต้นคำ = ร, ตัวสะกด = ล", "ㄴ ซ้อนซิกแซก = ลิ้นสะบัดม้วน"],
-  ["ㅂ", "b / p", "비읍 bieup", "พ → ป", 4, ["เส้นซ้าย", "เส้นขวา", "เส้นกลาง", "เส้นล่าง"], "พยางค์แรก = พ · พยางค์ที่ 2+ = ป · ตัวสะกด = พ", "ㅁ ที่เปิดฝาบน = ถ้วยเปิดปาก"],
+  ["ㅂ", "b / p", "비읍 bieup", "พ → บ", 4, ["เส้นซ้าย", "เส้นขวา", "เส้นกลาง", "เส้นล่าง"], "พยางค์แรก = พ · พยางค์ที่ 2+ = บ · ตัวสะกด = พ", "ㅁ ที่เปิดฝาบน = ถ้วยเปิดปาก"],
   ["ㅈ", "j", "지읒 jieut", "ช → จ", 3, ["เส้นบน", "เฉียงซ้าย", "เฉียงขวา"], "พยางค์แรก = ช · พยางค์ที่ 2+ = จ · ตัวสะกด = ท", "ㅅ + หมวก = ลมถูกกักก่อนเสียดสี"],
 
   // ---- Stage 5: aspirated — one extra stroke = one puff of air ----
