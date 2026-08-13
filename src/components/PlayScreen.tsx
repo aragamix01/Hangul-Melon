@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { demoParts, type Curriculum, type Jamo } from "@/data/hangul";
 import type { Progress } from "@/lib/progress";
-import { speakKo } from "@/lib/audio";
+import { speakKo, stopAudio } from "@/lib/audio";
 import { SpeakerIcon } from "./SpeakerButton";
 import { C, KO } from "./theme";
 
@@ -32,6 +32,9 @@ export function PlayScreen({
 }) {
   const [mode, setMode] = useState<"match" | "listen">("match");
   const pool = useMemo(() => quizPool(curriculum, progress), [curriculum, progress]);
+
+  // Switching games shouldn't leave the previous game's clip playing over the new one.
+  useEffect(() => stopAudio(), [mode]);
 
   const tab = (on: boolean): React.CSSProperties => ({
     border: "none",
@@ -286,6 +289,15 @@ function ListenGame({ pool }: { pool: Jamo[] }) {
   const [picked, setPicked] = useState<string | null>(null);
   const [hearts, setHearts] = useState(3);
   const [status, setStatus] = useState("แตะปุ่มลำโพงเพื่อฟัง");
+  /**
+   * True from a correct answer until the next question starts.
+   *
+   * The reveal is on screen for 1.6s. Left interactive, a student can tap the
+   * replay button in that window and have the clip cut off mid-word when the
+   * next question auto-plays — two voices over each other, and the answer they
+   * asked to hear never finishes.
+   */
+  const [locked, setLocked] = useState(false);
 
   /**
    * Every round is all-consonant or all-vowel, never mixed.
@@ -314,25 +326,46 @@ function ListenGame({ pool }: { pool: Jamo[] }) {
   const askingFor: "consonant" | "vowel" = answer?.kind ?? "consonant";
 
   // Auto-play each new question except the very first (browsers block audio
-  // before the user has interacted with the page).
+  // before the user has interacted with the page). Cut whatever is still
+  // sounding first, so a lingering clip never overlaps the new question.
   useEffect(() => {
     if (round === 0 || !answer) return;
-    const t = setTimeout(() => void speakKo(answer.demo, "sound"), 150);
+    const t = setTimeout(() => {
+      stopAudio();
+      void speakKo(answer.demo, "sound");
+    }, 150);
     return () => clearTimeout(t);
   }, [round, answer]);
 
+  // Drop any pending advance if the player leaves this game mid-reveal.
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    },
+    [],
+  );
+
   if (!answer) return null;
 
+  const replay = () => {
+    if (locked) return;
+    void speakKo(answer.demo, "sound");
+  };
+
   const tap = (j: Jamo) => {
+    if (locked) return;
     const [head, tail] = demoParts(answer);
     if (j.ch === answer.ch) {
       setPicked(j.ch);
+      setLocked(true);
       // Always show the split, so the student sees exactly which half of the
       // sound they were being asked for.
       setStatus(`ถูกต้อง! ${answer.demo} = ${head} + ${tail} → ${answer.ch} = ${answer.rom}`);
-      setTimeout(() => {
+      advanceTimer.current = setTimeout(() => {
         setPicked(null);
         setStatus("แตะปุ่มลำโพงเพื่อฟัง");
+        setLocked(false);
         setRound((r) => r + 1);
       }, 1600);
     } else {
@@ -390,12 +423,15 @@ function ListenGame({ pool }: { pool: Jamo[] }) {
 
       <button
         type="button"
-        onClick={() => void speakKo(answer.demo, "sound")}
+        onClick={replay}
+        disabled={locked}
         aria-label="ฟังเสียงอีกครั้ง"
         className="btn-pink"
         style={{
           border: "none",
-          cursor: "pointer",
+          cursor: locked ? "default" : "pointer",
+          opacity: locked ? 0.55 : 1,
+          transition: "opacity 0.2s ease",
           width: "clamp(96px, 26vw, 124px)",
           height: "clamp(96px, 26vw, 124px)",
           borderRadius: 40,
@@ -429,10 +465,11 @@ function ListenGame({ pool }: { pool: Jamo[] }) {
               key={q.ch}
               type="button"
               onClick={() => tap(q)}
+              disabled={locked && !on}
               aria-label={q.name}
               className="tile"
               style={{
-                cursor: "pointer",
+                cursor: locked ? "default" : "pointer",
                 padding: "20px 10px",
                 borderRadius: 20,
                 fontFamily: KO,

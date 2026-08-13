@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TOTAL_LETTERS, demoParts, type Curriculum, type Jamo } from "@/data/hangul";
 import type { Progress } from "@/lib/progress";
 import { speakKo } from "@/lib/audio";
@@ -43,6 +43,30 @@ export function CardsScreen({
   };
   const prev = () => setIndex((i) => (i - 1 + deck.length) % deck.length);
 
+  /**
+   * Whenever the card changes — next, previous, or a tap in the letter grid —
+   * put the flashcard back at the top of the viewport.
+   *
+   * Without this the browser keeps the old scroll offset, so on a phone you
+   * finish a card near the bottom of the page, tap จำได้แล้ว, and end up staring
+   * at the letter grid with the new letter off-screen above you.
+   */
+  const cardRef = useRef<HTMLElement | null>(null);
+  const mounted = useRef(false);
+  useEffect(() => {
+    // Don't yank the page on first paint — only on an actual card change.
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    const el = cardRef.current;
+    if (!el) return;
+    // Instant, not smooth: cards differ in height, and the page resizing under a
+    // smooth scroll aborts the animation partway, leaving the card stranded
+    // half off-screen. An instant jump lands on the card every time.
+    el.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [card.ch]);
+
   return (
     <div>
       <StageChips
@@ -61,12 +85,15 @@ export function CardsScreen({
         }}
       >
         <article
+          ref={cardRef}
           style={{
             background: C.surface,
             border: `2px solid ${C.border}`,
             borderRadius: 30,
             padding: "clamp(20px, 4vw, 28px)",
             position: "relative",
+            // Breathing room above the card once scrollIntoView lands it at the top.
+            scrollMarginTop: 16,
           }}
         >
           <div
