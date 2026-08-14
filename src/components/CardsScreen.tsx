@@ -436,15 +436,11 @@ function PositionSounds({ card }: { card: Jamo }) {
           fontWeight: 800,
           letterSpacing: "1.1px",
           color: "#B0873F",
-          marginBottom: 4,
+          marginBottom: 8,
         }}
       >
         เสียงเปลี่ยนตามตำแหน่ง · SOUND SHIFTS
       </div>
-      <p style={{ fontSize: 12.5, fontWeight: 600, color: "#8A6D3B", lineHeight: 1.5, margin: "0 0 10px" }}>
-        <span style={{ fontFamily: KO }}>{card.ch}</span> ไม่มีเสียงก้องของตัวเอง
-        จึงยืมจากเสียงข้างเคียง — แตะฟังแล้วเทียบกัน
-      </p>
       <div style={{ display: "grid", gap: 8 }}>
         {rows.map((p) => (
           <button
