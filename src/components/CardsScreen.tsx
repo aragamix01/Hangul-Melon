@@ -193,14 +193,6 @@ export function CardsScreen({
               textColor="#6E5763"
             />
             {card.positions ? <PositionSounds card={card} /> : null}
-            <InfoBox
-              label="จำง่าย · MEMORY HINT"
-              text={card.hint}
-              bg={C.blueTint}
-              border={C.blueBorder}
-              labelColor={C.blueText}
-              textColor={C.blueInk}
-            />
             <div
               style={{
                 background: C.purpleTint,
