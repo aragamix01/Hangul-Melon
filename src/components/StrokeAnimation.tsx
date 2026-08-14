@@ -108,11 +108,15 @@ export function StrokeAnimation({ strokes, size = 172 }: { strokes: Stroke[]; si
 
   const replay = useCallback(() => setRun((r) => r + 1), []);
 
+  // The strokes are only shown, never listed, so the order has to reach a
+  // screen reader some other way.
+  const description = strokes.map((s, i) => `${i + 1}. ${s.label}`).join(" · ");
+
   return (
     <button
       type="button"
       onClick={replay}
-      aria-label="เล่นลำดับเส้นอีกครั้ง"
+      aria-label={`ลำดับเส้น ${strokes.length} เส้น — ${description} · แตะเพื่อเล่นซ้ำ`}
       title="แตะเพื่อเล่นซ้ำ"
       style={{
         cursor: "pointer",

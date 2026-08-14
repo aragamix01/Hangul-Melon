@@ -220,51 +220,8 @@ export function CardsScreen({
               >
                 ลำดับเส้น · STROKE ORDER ({card.strokeCount} เส้น)
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "flex-start",
-                  flexWrap: "wrap",
-                }}
-              >
-                <StrokeAnimation key={card.ch} strokes={card.strokes} />
-                <div style={{ display: "grid", gap: 6, flex: "1 1 160px", minWidth: 0 }}>
-                  {card.strokes.map((s, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 7,
-                        background: C.surface,
-                        border: `2px solid ${C.purpleBorder}`,
-                        borderRadius: 14,
-                        padding: "6px 11px 6px 7px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 20,
-                          height: 20,
-                          flex: "0 0 auto",
-                          borderRadius: 999,
-                          background: C.pink,
-                          color: C.surface,
-                          fontSize: 11,
-                          fontWeight: 800,
-                          display: "grid",
-                          placeItems: "center",
-                        }}
-                      >
-                        {i + 1}
-                      </span>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: "#7A5D6D" }}>
-                        {s.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <div style={{ display: "grid", placeItems: "center" }}>
+                <StrokeAnimation key={card.ch} strokes={card.strokes} size={200} />
               </div>
             </div>
           </div>
