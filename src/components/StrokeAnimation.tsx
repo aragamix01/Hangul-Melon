@@ -137,7 +137,7 @@ export function StrokeAnimation({ strokes, size = 172 }: { strokes: Stroke[]; si
             d={s.d}
             fill="none"
             stroke={C.purpleBorder}
-            strokeWidth={9}
+            strokeWidth={8}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -152,7 +152,10 @@ export function StrokeAnimation({ strokes, size = 172 }: { strokes: Stroke[]; si
             d={s.d}
             fill="none"
             stroke={C.ink}
-            strokeWidth={9}
+            // 8, not 9: at the printed glyph's proportions the crossbar and the
+            // side tick sit 16 apart, and a thinner stroke keeps clear white
+            // between them.
+            strokeWidth={8}
             strokeLinecap="round"
             strokeLinejoin="round"
             // Dash pattern set, offset 0 = fully drawn. The animation blanks it

@@ -192,44 +192,52 @@ export const STROKES: Record<string, Stroke[]> = {
   // A left-pointing ㅓ/ㅔ tick therefore shares the vertical with that crossbar,
   // and has to sit well above it — around y 38 against y 58 — or the two
   // horizontals fuse into a single bar at 9 units wide.
+  // Coordinates measured off the rendered Gowun Dodum glyph rather than
+  // guessed. Three things that are easy to get backwards:
+  //
+  //   - a ㅓ/ㅔ tick sits BELOW the ㅜ crossbar, not above it
+  //   - the crossbar stops short of the vertical; they do not join
+  //   - ㅗ-compounds carry the bar low (y 64) while ㅜ-compounds carry it at
+  //     mid-height (y 50), because the ㅗ stem rises above its bar and the ㅜ
+  //     stem hangs below its own
   "ㅘ": [
-    { d: "M 28 30 L 28 58", label: "ㅗ — ขีดตั้ง" },
-    { d: "M 8 58 L 62 58", label: "ㅗ — เส้นนอนไปชนเส้นตั้ง" },
-    { d: "M 62 14 L 62 86", label: "ㅏ — เส้นตั้ง" },
-    { d: "M 62 38 L 88 38", label: "ㅏ — ขีดขวา" },
+    { d: "M 34 48 L 34 67", label: "ㅗ — ขีดตั้ง" },
+    { d: "M 6 67 L 58 67", label: "ㅗ — เส้นนอน" },
+    { d: "M 74 10 L 74 90", label: "ㅏ — เส้นตั้ง" },
+    { d: "M 74 49 L 94 49", label: "ㅏ — ขีดขวา" },
   ],
   "ㅙ": [
-    { d: "M 26 30 L 26 58", label: "ㅗ — ขีดตั้ง" },
-    { d: "M 6 58 L 56 58", label: "ㅗ — เส้นนอนไปชนเส้นตั้ง" },
-    { d: "M 56 14 L 56 86", label: "ㅐ — เส้นตั้ง" },
-    { d: "M 56 38 L 72 38", label: "ㅐ — ขีดขวา" },
-    { d: "M 82 14 L 82 86", label: "ㅐ — เส้นตั้งขวา" },
+    { d: "M 32 44 L 32 64", label: "ㅗ — ขีดตั้ง" },
+    { d: "M 6 64 L 54 64", label: "ㅗ — เส้นนอน" },
+    { d: "M 69 10 L 69 90", label: "ㅐ — เส้นตั้ง" },
+    { d: "M 69 44 L 90 44", label: "ㅐ — ขีดขวาเชื่อมสองเส้น" },
+    { d: "M 90 10 L 90 90", label: "ㅐ — เส้นตั้งขวา" },
   ],
   "ㅚ": [
-    { d: "M 30 30 L 30 58", label: "ㅗ — ขีดตั้ง" },
-    { d: "M 10 58 L 66 58", label: "ㅗ — เส้นนอนไปชนเส้นตั้ง" },
-    { d: "M 66 14 L 66 86", label: "ㅣ — เส้นตั้ง" },
+    { d: "M 39 46 L 39 64", label: "ㅗ — ขีดตั้ง" },
+    { d: "M 6 64 L 74 64", label: "ㅗ — เส้นนอน" },
+    { d: "M 89 10 L 89 90", label: "ㅣ — เส้นตั้ง" },
   ],
   "ㅝ": [
-    { d: "M 8 58 L 62 58", label: "ㅜ — เส้นนอนไปชนเส้นตั้ง" },
-    { d: "M 30 58 L 30 86", label: "ㅜ — ขีดลง" },
-    { d: "M 44 38 L 62 38", label: "ㅓ — ขีดซ้าย" },
-    { d: "M 62 14 L 62 86", label: "ㅓ — เส้นตั้ง" },
+    { d: "M 6 53 L 74 53", label: "ㅜ — เส้นนอน" },
+    { d: "M 35 53 L 35 90", label: "ㅜ — ขีดลง" },
+    { d: "M 58 67 L 90 67", label: "ㅓ — ขีดซ้าย (อยู่ใต้เส้นนอนของ ㅜ)" },
+    { d: "M 90 10 L 90 90", label: "ㅓ — เส้นตั้ง" },
   ],
   "ㅞ": [
-    { d: "M 8 58 L 58 58", label: "ㅜ — เส้นนอนไปชนเส้นตั้ง" },
-    { d: "M 28 58 L 28 86", label: "ㅜ — ขีดลง" },
-    { d: "M 42 38 L 58 38", label: "ㅔ — ขีดซ้าย" },
-    { d: "M 58 14 L 58 86", label: "ㅔ — เส้นตั้ง" },
-    { d: "M 80 14 L 80 86", label: "ㅔ — เส้นตั้งขวา" },
+    { d: "M 6 50 L 55 50", label: "ㅜ — เส้นนอน" },
+    { d: "M 29 50 L 29 90", label: "ㅜ — ขีดลง" },
+    { d: "M 47 64 L 70 64", label: "ㅔ — ขีดซ้าย (อยู่ใต้เส้นนอนของ ㅜ)" },
+    { d: "M 70 10 L 70 90", label: "ㅔ — เส้นตั้ง" },
+    { d: "M 90 10 L 90 90", label: "ㅔ — เส้นตั้งขวา" },
   ],
   "ㅟ": [
-    { d: "M 10 58 L 66 58", label: "ㅜ — เส้นนอนไปชนเส้นตั้ง" },
-    { d: "M 30 58 L 30 86", label: "ㅜ — ขีดลง" },
-    { d: "M 66 14 L 66 86", label: "ㅣ — เส้นตั้ง" },
+    { d: "M 6 52 L 75 52", label: "ㅜ — เส้นนอน" },
+    { d: "M 39 52 L 39 90", label: "ㅜ — ขีดลง" },
+    { d: "M 90 10 L 90 90", label: "ㅣ — เส้นตั้ง" },
   ],
   "ㅢ": [
-    { d: "M 10 52 L 66 52", label: "ㅡ — เส้นนอนไปชนเส้นตั้ง" },
-    { d: "M 66 14 L 66 86", label: "ㅣ — เส้นตั้ง" },
+    { d: "M 6 64 L 74 64", label: "ㅡ — เส้นนอน" },
+    { d: "M 89 10 L 89 90", label: "ㅣ — เส้นตั้ง" },
   ],
 };
