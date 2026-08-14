@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { Stroke } from "@/data/strokes";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { curvify, type Stroke } from "@/data/strokes";
 import { C } from "./theme";
 
 /** Drawing speed in viewBox units per second. */
@@ -27,6 +27,8 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
  * diagram already names them in order.
  */
 export function StrokeAnimation({ strokes, size = 172 }: { strokes: Stroke[]; size?: number }) {
+  // Curve the authored straight segments once per letter, not per render.
+  const paths = useMemo(() => strokes.map((s) => curvify(s.d)), [strokes]);
   const pathRefs = useRef<(SVGPathElement | null)[]>([]);
   const [lengths, setLengths] = useState<number[]>([]);
   const [run, setRun] = useState(0);
@@ -34,8 +36,8 @@ export function StrokeAnimation({ strokes, size = 172 }: { strokes: Stroke[]; si
 
   // Path length drives both the dash pattern and the per-stroke timing.
   useLayoutEffect(() => {
-    setLengths(pathRefs.current.slice(0, strokes.length).map((p) => p?.getTotalLength() ?? 0));
-  }, [strokes]);
+    setLengths(pathRefs.current.slice(0, paths.length).map((p) => p?.getTotalLength() ?? 0));
+  }, [paths]);
 
   useEffect(() => {
     if (lengths.length !== strokes.length || lengths.some((l) => l === 0)) return;
@@ -131,10 +133,10 @@ export function StrokeAnimation({ strokes, size = 172 }: { strokes: Stroke[]; si
         style={{ display: "block" }}
       >
         {/* Faint full glyph, so the target shape is visible from the start. */}
-        {strokes.map((s, i) => (
+        {paths.map((d, i) => (
           <path
             key={`ghost-${i}`}
-            d={s.d}
+            d={d}
             fill="none"
             stroke={C.purpleBorder}
             strokeWidth={8}
@@ -143,18 +145,17 @@ export function StrokeAnimation({ strokes, size = 172 }: { strokes: Stroke[]; si
           />
         ))}
 
-        {strokes.map((s, i) => (
+        {paths.map((d, i) => (
           <path
             key={`ink-${i}`}
             ref={(el) => {
               pathRefs.current[i] = el;
             }}
-            d={s.d}
+            d={d}
             fill="none"
             stroke={C.ink}
-            // 8, not 9: at the printed glyph's proportions the crossbar and the
-            // side tick sit 16 apart, and a thinner stroke keeps clear white
-            // between them.
+            // Thin enough that the crossbar and the side tick of a compound
+            // vowel keep clear white between them at the font's proportions.
             strokeWidth={8}
             strokeLinecap="round"
             strokeLinejoin="round"

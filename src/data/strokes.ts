@@ -25,6 +25,55 @@ export interface Stroke {
 const circle = (cx: number, cy: number, r: number) =>
   `M ${cx} ${cy - r} A ${r} ${r} 0 1 0 ${cx} ${cy + r} A ${r} ${r} 0 1 0 ${cx} ${cy - r}`;
 
+/**
+ * Bow each straight segment into a shallow curve, the way a hand does — a
+ * pen drags slightly against the direction of travel rather than ruling a
+ * perfectly straight edge. Horizontals arc upward, verticals lean left,
+ * matching how Gowun Dodum draws them.
+ *
+ * Endpoints are left exactly where they were authored, so measured positions
+ * and stroke joins (ㅁ's corners, a tick meeting its vertical) are unaffected —
+ * only the middle of each segment moves. Straight coordinates stay in the data
+ * above; this is applied at render time.
+ */
+export function curvify(d: string, bow = 0.03, maxBow = 1.6): string {
+  if (d.includes("A")) return d; // circles are already curves
+  const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+  if (pts.length < 2) return d;
+
+  const r = (n: number) => Math.round(n * 100) / 100;
+  let out = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const len = Math.hypot(dx, dy) || 1;
+    const horizontal = Math.abs(dx) >= Math.abs(dy);
+    let px = -dy / len;
+    let py = dx / len;
+    // Horizontal-ish segments lift (-y); vertical-ish ones lean left (-x).
+    if (horizontal ? py > 0 : px > 0) {
+      px = -px;
+      py = -py;
+    }
+    // Capped: proportional bow alone sags a 70-unit crossbar by ~4 units, which
+    // measurably pulls the glyph away from the printed shape. Verticals get
+    // barely any — in this font they are ruled straight, and bowing them cost
+    // more fidelity than every other change here combined.
+    const amt = Math.min(len * bow, horizontal ? maxBow : 0.5);
+    // The control point sits late along a horizontal rather than at its
+    // midpoint: the font keeps these flat on the left and lifts them toward the
+    // right, so a symmetric arc pulls against the real shape. Verticals stay
+    // symmetric.
+    const t = horizontal ? 0.72 : 0.5;
+    out += ` Q ${r(x0 + dx * t + px * amt)} ${r(y0 + dy * t + py * amt)} ${x1} ${y1}`;
+  }
+  return out;
+}
+
 export const STROKES: Record<string, Stroke[]> = {
   // ---------------- พยัญชนะเดี่ยว 14 ----------------
   "ㄱ": [{ d: "M 22 26 L 78 26 L 66 80", label: "ลากไปขวา แล้วหักลงล่าง ไม่ยกปากกา" }],
@@ -214,8 +263,8 @@ export const STROKES: Record<string, Stroke[]> = {
     { d: "M 90 10 L 90 90", label: "ㅐ — เส้นตั้งขวา" },
   ],
   "ㅚ": [
-    { d: "M 39 46 L 39 64", label: "ㅗ — ขีดตั้ง" },
-    { d: "M 6 64 L 74 64", label: "ㅗ — เส้นนอน" },
+    { d: "M 39 48 L 39 67", label: "ㅗ — ขีดตั้ง" },
+    { d: "M 6 67 L 76 67", label: "ㅗ — เส้นนอน" },
     { d: "M 89 10 L 89 90", label: "ㅣ — เส้นตั้ง" },
   ],
   "ㅝ": [
@@ -237,7 +286,7 @@ export const STROKES: Record<string, Stroke[]> = {
     { d: "M 90 10 L 90 90", label: "ㅣ — เส้นตั้ง" },
   ],
   "ㅢ": [
-    { d: "M 6 64 L 74 64", label: "ㅡ — เส้นนอน" },
+    { d: "M 6 67 L 76 67", label: "ㅡ — เส้นนอน" },
     { d: "M 89 10 L 89 90", label: "ㅣ — เส้นตั้ง" },
   ],
 };
