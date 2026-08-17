@@ -1,6 +1,6 @@
 "use client";
 
-import { TOTAL_LETTERS } from "@/data/hangul";
+import { TOTAL_CARDS } from "@/data/hangul";
 import { C, KO } from "./theme";
 
 const pill: React.CSSProperties = {
@@ -65,9 +65,9 @@ export function Header({ streak, learned }: { streak: number; learned: number })
           <span style={dot(C.gold)} />
           {streak} วัน
         </div>
-        <div style={pill} title="ตัวอักษรที่จำได้แล้ว">
+        <div style={pill} title="บัตรคำที่จำได้แล้ว">
           <span style={dot(C.blue)} />
-          {learned}/{TOTAL_LETTERS}
+          {learned}/{TOTAL_CARDS}
         </div>
       </div>
     </header>

@@ -1,6 +1,12 @@
 "use client";
 
-import { CURRICULA, TOTAL_LETTERS, type Curriculum, type CurriculumId } from "@/data/hangul";
+import {
+  CURRICULA,
+  TOTAL_CARDS,
+  TOTAL_LETTERS,
+  type Curriculum,
+  type CurriculumId,
+} from "@/data/hangul";
 import type { Progress } from "@/lib/progress";
 import { C, KO } from "./theme";
 import type { Screen } from "./Nav";
@@ -64,7 +70,7 @@ export function HomeScreen({
               textWrap: "pretty",
             }}
           >
-            อักษรเกาหลี {TOTAL_LETTERS} ตัว ใน {stages.length} ด่าน
+            อักษรเกาหลี {TOTAL_LETTERS} ตัว + ตัวสะกด ใน {stages.length} ด่าน
           </h1>
           <p
             style={{
@@ -133,7 +139,7 @@ export function HomeScreen({
         </div>
       </section>
 
-      <ProgressBar value={learnedCount} max={TOTAL_LETTERS} />
+      <ProgressBar value={learnedCount} max={TOTAL_CARDS} />
 
       <div
         style={{

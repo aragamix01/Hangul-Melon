@@ -43,11 +43,26 @@
     "ㅟ": { "nameKo": "위", "demo": "위" },
     "ㅢ": { "nameKo": "의", "demo": "의" }
   },
-  "_words_comment": "Example words for the lenis stops ㄱ ㄷ ㅂ ㅈ, which are voiceless word-initially but VOICED between voiced sounds. Each letter gets one word per position: initial, medial, final.",
+  "_words_comment": "Words that need a recording of their own. First block: the lenis stops ㄱ ㄷ ㅂ ㅈ, voiceless word-initially but VOICED between voiced sounds — one word per position. Second block: the 겹받침 chapter, each word paired with how it is actually said, because those pairs are not plain neutralisation (앉다 tenses to 안따, 많다 fuses ㅎ into 만타) and so cannot be reconstructed from the syllable clips. Last: the liaison example. Single finals need nothing here — 볶 is the same sound as 복, so spokenForm() reuses that clip.",
   "words": [
     "가방", "아기", "한국",
     "다리", "어디", "듣다",
     "바다", "아버지", "밥",
-    "자다", "아저씨", "낮"
+    "자다", "아저씨", "낮",
+
+    "몫", "목",
+    "앉다", "안따",
+    "많다", "만타",
+    "닭", "닥",
+    "삶", "삼",
+    "여덟", "여덜",
+    "밟다", "밥따",
+    "외곬", "외골",
+    "핥다", "할따",
+    "잃다", "일타",
+    "읊다", "읍따",
+    "없다", "업따",
+
+    "날을", "나를"
   ]
 }

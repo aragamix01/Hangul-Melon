@@ -2,18 +2,23 @@
 
 import { useMemo, useState } from "react";
 import {
-  CONSONANTS,
-  FINAL_ORDER,
-  VOWELS,
   composeSyllable,
+  neutralizedSyllable,
   romanizeSyllable,
   type Curriculum,
 } from "@/data/hangul";
+import { CLUSTER_FINALS, NEUTRALIZE, SINGLE_FINALS } from "@/data/finals";
 import { speakKo } from "@/lib/audio";
 import { C, KO } from "./theme";
 
-const CONSONANT_SET = new Set(CONSONANTS.map((j) => j.ch));
-const VOWEL_SET = new Set(VOWELS.map((j) => j.ch));
+/**
+ * All 27 finals, banded the way ด่าน 5 and ด่าน 6 teach them rather than in
+ * Unicode order.
+ */
+const FINAL_GROUPS_UI = [
+  { label: "ไม่มีตัวสะกด · เดี่ยว และ คู่", items: ["", ...SINGLE_FINALS] },
+  { label: "ตัวสะกดประสม · 겹받침", items: CLUSTER_FINALS },
+];
 
 export function BuilderScreen({ curriculum }: { curriculum: Curriculum }) {
   // Pickers follow whichever teaching order is active, so the builder reinforces
@@ -33,6 +38,10 @@ export function BuilderScreen({ curriculum }: { curriculum: Curriculum }) {
 
   const syllable = composeSyllable(initial, medial, final);
   const rom = romanizeSyllable(initial, medial, final);
+  // What the syllable actually sounds like. 볶 and 복 are one sound, so one
+  // recording — see neutralizedSyllable.
+  const spoken = neutralizedSyllable(initial, medial, final);
+  const shifts = Boolean(final) && NEUTRALIZE[final] !== final;
 
   return (
     <div>
@@ -113,7 +122,7 @@ export function BuilderScreen({ curriculum }: { curriculum: Curriculum }) {
           <div style={{ fontSize: 17, fontWeight: 800, color: "#7A5D6D" }}>{rom}</div>
           <button
             type="button"
-            onClick={() => void speakKo(syllable, "syl")}
+            onClick={() => void speakKo(spoken, "syl")}
             className="btn-pink"
             style={{
               border: "none",
@@ -163,7 +172,16 @@ export function BuilderScreen({ curriculum }: { curriculum: Curriculum }) {
               lineHeight: 1.5,
             }}
           >
-            ตัวสะกดเกาหลีมีแค่ 7 เสียง — ตัวอักษรอื่นที่มาอยู่ท้ายจะถูกยุบเป็น 1 ใน 7 นี้
+            {shifts ? (
+              <>
+                <span style={{ fontFamily: KO, fontSize: 15, color: C.ink }}>{syllable}</span> อ่านว่า{" "}
+                <span style={{ fontFamily: KO, fontSize: 15, color: C.ink }}>{spoken}</span> — ตัวสะกด
+                <span style={{ fontFamily: KO }}> {final} </span>ยุบเป็น
+                <span style={{ fontFamily: KO }}> {NEUTRALIZE[final]}</span>
+              </>
+            ) : (
+              "ตัวสะกดเกาหลีมีแค่ 7 เสียง — ตัวอักษรอื่นที่มาอยู่ท้ายจะถูกยุบเป็น 1 ใน 7 นี้"
+            )}
           </p>
         ) : null}
       </section>
@@ -195,7 +213,7 @@ export function BuilderScreen({ curriculum }: { curriculum: Curriculum }) {
           title="ตัวสะกด · FINAL (ตัวเลือก)"
           color={C.purpleText}
           hoverClass="tile-purple"
-          items={FINAL_ORDER}
+          items={FINAL_GROUPS_UI}
           selected={final}
           onPick={setFinal}
         />
@@ -231,6 +249,13 @@ const Op = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
+/**
+ * `items` is either one flat list of characters, or several labelled bands.
+ * The final picker needs the bands: 28 undifferentiated tiles hide the fact
+ * that eleven of them are 겹받침, which is a different lesson from the rest.
+ */
+type PickerGroup = { label?: string; items: string[] };
+
 function Picker({
   title,
   color,
@@ -242,10 +267,13 @@ function Picker({
   title: string;
   color: string;
   hoverClass: string;
-  items: string[];
+  items: string[] | PickerGroup[];
   selected: string;
   onPick: (ch: string) => void;
 }) {
+  const groups: PickerGroup[] =
+    typeof items[0] === "string" ? [{ items: items as string[] }] : (items as PickerGroup[]);
+
   return (
     <div
       style={{
@@ -266,39 +294,55 @@ function Picker({
       >
         {title}
       </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(50px, 1fr))",
-          gap: 7,
-        }}
-      >
-        {items.map((ch) => {
-          const on = selected === ch;
-          const isJamo = CONSONANT_SET.has(ch) || VOWEL_SET.has(ch);
-          return (
-            <button
-              key={ch || "none"}
-              type="button"
-              onClick={() => onPick(ch)}
-              aria-pressed={on}
-              className={hoverClass}
+      {groups.map((g, gi) => (
+        <div key={g.label ?? gi}>
+          {g.label ? (
+            <div
               style={{
-                cursor: "pointer",
-                aspectRatio: "1",
-                borderRadius: 15,
-                fontFamily: isJamo ? KO : "inherit",
-                fontSize: 22,
-                background: on ? C.pinkTint : C.surface,
-                border: `2px solid ${on ? C.pink : C.border}`,
-                color: C.ink,
+                fontSize: 10.5,
+                fontWeight: 800,
+                letterSpacing: "0.8px",
+                color: C.inkFaintest,
+                margin: gi === 0 ? "0 0 7px" : "12px 0 7px",
               }}
             >
-              {ch || "–"}
-            </button>
-          );
-        })}
-      </div>
+              {g.label}
+            </div>
+          ) : null}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(50px, 1fr))",
+              gap: 7,
+            }}
+          >
+            {g.items.map((ch) => {
+              const on = selected === ch;
+              return (
+                <button
+                  key={ch || "none"}
+                  type="button"
+                  onClick={() => onPick(ch)}
+                  aria-pressed={on}
+                  className={hoverClass}
+                  style={{
+                    cursor: "pointer",
+                    aspectRatio: "1",
+                    borderRadius: 15,
+                    fontFamily: ch ? KO : "inherit",
+                    fontSize: 22,
+                    background: on ? C.pinkTint : C.surface,
+                    border: `2px solid ${on ? C.pink : C.border}`,
+                    color: C.ink,
+                  }}
+                >
+                  {ch || "–"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

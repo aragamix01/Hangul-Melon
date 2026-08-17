@@ -1,5 +1,6 @@
 import pronunciations from "./pronunciations.json";
 import { STROKES, type Stroke } from "./strokes";
+import { CLUSTERS, FINAL_GROUPS, NEUTRALIZE, type Cluster, type FinalGroup } from "./finals";
 
 const PRON = pronunciations.letters as Record<string, { nameKo: string; demo: string }>;
 
@@ -189,9 +190,17 @@ function toJamo(rows: Row[], kind: JamoKind): Jamo[] {
 
 export interface Stage {
   n: number;
-  /** Characters taught in this stage, in teaching order */
+  /**
+   * Progress keys for the cards in this stage, in teaching order.
+   *
+   * For letter stages this is the jamo itself ("ㄱ"). The 받침 stages use
+   * namespaced keys ("final:ㄱ", "cluster:ㄳ") because a bare "ㄱ" is already a
+   * key from the letter stages and marking one would tick the other.
+   */
   chars: string[];
   kind: JamoKind;
+  /** Which card component this stage's deck renders */
+  lesson: "letters" | "finals" | "clusters";
   glyph: string;
   title: string;
   sub: string;
@@ -215,7 +224,7 @@ export interface Stage {
  */
 export const STAGES_DERIVATION: Stage[] = [
   {
-    n: 1, kind: "consonant", glyph: "ㄱ",
+    n: 1, kind: "consonant", lesson: "letters", glyph: "ㄱ",
     chars: ["ㄱ", "ㄴ", "ㅁ", "ㅅ", "ㅇ"],
     title: "5 รูปพื้นฐาน",
     sub: "ㄱ ㄴ ㅁ ㅅ ㅇ · พยัญชนะต้นตำรับ",
@@ -223,7 +232,7 @@ export const STAGES_DERIVATION: Stage[] = [
     tint: "#FDE8F0", border: "#F3DDE6",
   },
   {
-    n: 2, kind: "vowel", glyph: "ㅏ",
+    n: 2, kind: "vowel", lesson: "letters", glyph: "ㅏ",
     chars: ["ㅏ", "ㅓ", "ㅗ", "ㅜ", "ㅡ", "ㅣ"],
     title: "6 สระหลัก",
     sub: "ㅏ ㅓ ㅗ ㅜ ㅡ ㅣ · อ่านคำได้ทันที",
@@ -231,7 +240,7 @@ export const STAGES_DERIVATION: Stage[] = [
     tint: "#EAF2F6", border: "#D5E7EF",
   },
   {
-    n: 3, kind: "consonant", glyph: "ㄷ",
+    n: 3, kind: "consonant", lesson: "letters", glyph: "ㄷ",
     chars: ["ㄷ", "ㄹ", "ㅂ", "ㅈ"],
     title: "พยัญชนะเดี่ยวที่เหลือ",
     sub: "ㄷ ㄹ ㅂ ㅈ · เติมขีดจากด่าน 1",
@@ -239,7 +248,7 @@ export const STAGES_DERIVATION: Stage[] = [
     tint: "#FDE8F0", border: "#F3DDE6",
   },
   {
-    n: 4, kind: "vowel", glyph: "ㅑ",
+    n: 4, kind: "vowel", lesson: "letters", glyph: "ㅑ",
     chars: ["ㅑ", "ㅕ", "ㅛ", "ㅠ"],
     title: "สระเสียง ย",
     sub: "ㅑ ㅕ ㅛ ㅠ · เติมขีดอีกอัน",
@@ -247,7 +256,7 @@ export const STAGES_DERIVATION: Stage[] = [
     tint: "#EAF2F6", border: "#D5E7EF",
   },
   {
-    n: 5, kind: "consonant", glyph: "ㅋ",
+    n: 5, kind: "consonant", lesson: "letters", glyph: "ㅋ",
     chars: ["ㅋ", "ㅌ", "ㅍ", "ㅊ", "ㅎ"],
     title: "พยัญชนะพ่นลม",
     sub: "ㅋ ㅌ ㅍ ㅊ ㅎ · ขีดเพิ่ม = ลมเพิ่ม",
@@ -255,7 +264,7 @@ export const STAGES_DERIVATION: Stage[] = [
     tint: "#FDE8F0", border: "#F3DDE6",
   },
   {
-    n: 6, kind: "vowel", glyph: "ㅐ",
+    n: 6, kind: "vowel", lesson: "letters", glyph: "ㅐ",
     chars: ["ㅐ", "ㅔ", "ㅒ", "ㅖ"],
     title: "สระ แอ / เอ",
     sub: "ㅐ ㅔ ㅒ ㅖ · เติม ㅣ ต่อท้าย",
@@ -263,7 +272,7 @@ export const STAGES_DERIVATION: Stage[] = [
     tint: "#EAF2F6", border: "#D5E7EF",
   },
   {
-    n: 7, kind: "consonant", glyph: "ㄲ",
+    n: 7, kind: "consonant", lesson: "letters", glyph: "ㄲ",
     chars: ["ㄲ", "ㄸ", "ㅃ", "ㅆ", "ㅉ"],
     title: "พยัญชนะคู่",
     sub: "ㄲ ㄸ ㅃ ㅆ ㅉ · เกร็งคอ ไม่พ่นลม",
@@ -271,7 +280,7 @@ export const STAGES_DERIVATION: Stage[] = [
     tint: "#FDE8F0", border: "#F3DDE6",
   },
   {
-    n: 8, kind: "vowel", glyph: "ㅘ",
+    n: 8, kind: "vowel", lesson: "letters", glyph: "ㅘ",
     chars: ["ㅘ", "ㅙ", "ㅚ", "ㅝ", "ㅞ", "ㅟ", "ㅢ"],
     title: "สระประสม ว",
     sub: "ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ · สระสองตัวชนกัน",
@@ -291,7 +300,7 @@ export const STAGES_DERIVATION: Stage[] = [
  */
 export const STAGES_CANONICAL: Stage[] = [
   {
-    n: 1, kind: "vowel", glyph: "ㅏ",
+    n: 1, kind: "vowel", lesson: "letters", glyph: "ㅏ",
     chars: ["ㅏ", "ㅑ", "ㅓ", "ㅕ", "ㅗ", "ㅛ", "ㅜ", "ㅠ", "ㅡ", "ㅣ"],
     title: "สระเดี่ยว 10 ตัว",
     sub: "단모음 · ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ",
@@ -299,7 +308,7 @@ export const STAGES_CANONICAL: Stage[] = [
     tint: "#EAF2F6", border: "#D5E7EF",
   },
   {
-    n: 2, kind: "consonant", glyph: "ㄱ",
+    n: 2, kind: "consonant", lesson: "letters", glyph: "ㄱ",
     chars: ["ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"],
     title: "พยัญชนะเดี่ยว 14 ตัว",
     sub: "자음 · ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ",
@@ -307,7 +316,7 @@ export const STAGES_CANONICAL: Stage[] = [
     tint: "#FDE8F0", border: "#F3DDE6",
   },
   {
-    n: 3, kind: "consonant", glyph: "ㄲ",
+    n: 3, kind: "consonant", lesson: "letters", glyph: "ㄲ",
     chars: ["ㄲ", "ㄸ", "ㅃ", "ㅆ", "ㅉ"],
     title: "พยัญชนะคู่ 5 ตัว",
     sub: "쌍자음 · ㄲ ㄸ ㅃ ㅆ ㅉ",
@@ -315,7 +324,7 @@ export const STAGES_CANONICAL: Stage[] = [
     tint: "#FDE8F0", border: "#F3DDE6",
   },
   {
-    n: 4, kind: "vowel", glyph: "ㅘ",
+    n: 4, kind: "vowel", lesson: "letters", glyph: "ㅘ",
     chars: ["ㅔ", "ㅖ", "ㅐ", "ㅒ", "ㅘ", "ㅙ", "ㅚ", "ㅝ", "ㅞ", "ㅟ", "ㅢ"],
     title: "สระประสม 11 ตัว",
     sub: "이중모음 · ㅔ ㅖ ㅐ ㅒ ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ",
@@ -323,6 +332,35 @@ export const STAGES_CANONICAL: Stage[] = [
     tint: "#EAF2F6", border: "#D5E7EF",
   },
 ];
+
+/**
+ * The 받침 chapter, which the PDF teaches after the 40 letters are done.
+ *
+ * It is not an ordering of letters, so it is not part of either curriculum's
+ * order — it comes after whichever order the student picked, and both get it.
+ * Hence a factory: the stage numbers differ between the two curricula (5–6
+ * after 가나다's four stages, 9–10 after the derivation order's eight).
+ */
+function finalsStages(startAt: number): Stage[] {
+  return [
+    {
+      n: startAt, kind: "consonant", lesson: "finals", glyph: "받",
+      chars: FINAL_GROUPS.map((g) => g.key),
+      title: "ตัวสะกดเดี่ยว คู่",
+      sub: "받침 · 쌍받침 · 16 ตัวอักษร เหลือ 7 เสียง",
+      rule: "ตัวสะกดไม่ปล่อยลม จึงได้ยินแค่ตำแหน่งปาก ไม่ได้ยินว่าเป็นตัวไหน 16 ตัวจึงยุบเหลือ 7 เสียง: แม่กก กน กด กล กม กบ กง · ㄸ ㅃ ㅉ เป็นตัวสะกดไม่ได้",
+      tint: "#FFF1E2", border: "#F3DEC0",
+    },
+    {
+      n: startAt + 1, kind: "consonant", lesson: "clusters", glyph: "겹",
+      chars: CLUSTERS.map((c) => c.key),
+      title: "ตัวสะกดประสม",
+      sub: "겹받침 · พยัญชนะสองตัวต่างกัน 11 คู่",
+      rule: "เขียนสองตัว อ่านตัวเดียว · ออกเสียงตัวหน้า: ㄳ ㄵ ㄶ ㄼ ㄽ ㄾ ㅀ ㅄ · ออกเสียงตัวหลัง: ㄺ ㄻ ㄿ · ดูจากรูปไม่ได้ ต้องจำ",
+      tint: "#FFF1E2", border: "#F3DEC0",
+    },
+  ];
+}
 
 export const CONSONANTS: Jamo[] = toJamo(consonantRows, "consonant");
 export const VOWELS: Jamo[] = toJamo(vowelRows, "vowel");
@@ -332,6 +370,9 @@ export const JAMO_BY_CHAR: Record<string, Jamo> = {};
 [...CONSONANTS, ...VOWELS].forEach((j) => (JAMO_BY_CHAR[j.ch] = j));
 
 export const TOTAL_LETTERS = CONSONANTS.length + VOWELS.length; // 40
+
+/** Letters plus the 받침 cards — what the progress bar counts. */
+export const TOTAL_CARDS = TOTAL_LETTERS + FINAL_GROUPS.length + CLUSTERS.length; // 58
 
 export type CurriculumId = "canonical" | "derivation";
 
@@ -354,12 +395,18 @@ function buildCurriculum(
   label: string,
   sublabel: string,
   blurb: string,
-  stages: Stage[],
+  letterStages: Stage[],
 ): Curriculum {
+  // The 받침 chapter is the same lesson either way, so it is appended rather
+  // than authored twice — only its stage numbers depend on the curriculum.
+  const stages = [...letterStages, ...finalsStages(letterStages.length + 1)];
+
   const index = new Map<string, number>();
   stages.forEach((s) => s.chars.forEach((ch) => index.set(ch, s.n)));
 
-  const order = stages.flatMap((s) => s.chars.map((ch) => JAMO_BY_CHAR[ch]));
+  // Only the letter stages are an ordering of the alphabet; `order` stays the
+  // 40 jamo so the builder and the practice games keep working off it.
+  const order = letterStages.flatMap((s) => s.chars.map((ch) => JAMO_BY_CHAR[ch]));
   if (order.length !== TOTAL_LETTERS || order.some((j) => !j)) {
     throw new Error(`Curriculum "${id}" does not cover all ${TOTAL_LETTERS} letters exactly once`);
   }
@@ -372,7 +419,7 @@ export const CURRICULA: Record<CurriculumId, Curriculum> = {
     "canonical",
     "가나다",
     "ลำดับมาตรฐาน",
-    "ลำดับที่โรงเรียนเกาหลีและพจนานุกรมใช้จริง — 14 + 10 + 5 + 11",
+    "ลำดับที่โรงเรียนเกาหลีและพจนานุกรมใช้จริง — 14 + 10 + 5 + 11 แล้วต่อด้วยตัวสะกด",
     STAGES_CANONICAL,
   ),
   derivation: buildCurriculum(
@@ -383,6 +430,37 @@ export const CURRICULA: Record<CurriculumId, Curriculum> = {
     STAGES_DERIVATION,
   ),
 };
+
+// ---------------------------------------------------------------------------
+// Cards
+// ---------------------------------------------------------------------------
+
+/**
+ * What a flashcard can be. Letters are the first stages; the 받침 chapter adds
+ * two more shapes that are not letters at all — a *sound* shared by several
+ * letters, and a two-letter cluster read as one.
+ */
+export type Card =
+  | { kind: "letter"; key: string; glyph: string; jamo: Jamo }
+  | { kind: "final"; key: string; glyph: string; group: FinalGroup }
+  | { kind: "cluster"; key: string; glyph: string; cluster: Cluster };
+
+const CARD_BY_KEY: Record<string, Card> = {};
+[...CONSONANTS, ...VOWELS].forEach((j) => {
+  CARD_BY_KEY[j.ch] = { kind: "letter", key: j.ch, glyph: j.ch, jamo: j };
+});
+FINAL_GROUPS.forEach((g) => {
+  CARD_BY_KEY[g.key] = { kind: "final", key: g.key, glyph: g.examples[0], group: g };
+});
+CLUSTERS.forEach((c) => {
+  CARD_BY_KEY[c.key] = { kind: "cluster", key: c.key, glyph: c.ch, cluster: c };
+});
+
+/** The deck for one stage, or every card in teaching order when stage is 0. */
+export function cardsOf(curriculum: Curriculum, stage: number): Card[] {
+  const stages = stage === 0 ? curriculum.stages : curriculum.stages.filter((s) => s.n === stage);
+  return stages.flatMap((s) => s.chars.map((ch) => CARD_BY_KEY[ch]));
+}
 
 /** Her order is the default. */
 export const DEFAULT_CURRICULUM: CurriculumId = "canonical";
@@ -414,13 +492,23 @@ export const MEDIAL_ORDER = [
   "ㅚ", "ㅛ", "ㅜ", "ㅝ", "ㅞ", "ㅟ", "ㅠ", "ㅡ", "ㅢ", "ㅣ",
 ];
 
-/** The seven final sounds a Korean syllable can actually end in, plus "none". */
-export const FINAL_ORDER = ["", "ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅇ"];
+/**
+ * Final-consonant slot order, fixed by Unicode: "" then all 27 finals, in the
+ * exact order the composition formula indexes them. Not a teaching order — the
+ * builder shows finals grouped by sound, from finals.ts.
+ *
+ * Sixteen of these are single letters and eleven are 겹받침 clusters, but they
+ * make only seven distinct sounds between them — see NEUTRALIZE.
+ */
+export const FINAL_ORDER = [
+  "", "ㄱ", "ㄲ", "ㄳ", "ㄴ", "ㄵ", "ㄶ", "ㄷ", "ㄹ", "ㄺ", "ㄻ", "ㄼ", "ㄽ", "ㄾ",
+  "ㄿ", "ㅀ", "ㅁ", "ㅂ", "ㅄ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ",
+];
 
-/** Index into the Unicode final-consonant table. */
-const FINAL_INDEX: Record<string, number> = {
-  "": 0, "ㄱ": 1, "ㄴ": 4, "ㄷ": 7, "ㄹ": 8, "ㅁ": 16, "ㅂ": 17, "ㅅ": 19, "ㅇ": 21,
-};
+/** Index into the Unicode final-consonant table — position in FINAL_ORDER. */
+const FINAL_INDEX: Record<string, number> = Object.fromEntries(
+  FINAL_ORDER.map((ch, i) => [ch, i]),
+);
 
 export function composeSyllable(initial: string, medial: string, final = ""): string {
   const i = INITIAL_ORDER.indexOf(initial);
@@ -428,6 +516,45 @@ export function composeSyllable(initial: string, medial: string, final = ""): st
   if (i < 0 || m < 0) return "";
   const f = FINAL_INDEX[final] ?? 0;
   return String.fromCharCode(0xac00 + (i * 21 + m) * 28 + f);
+}
+
+/**
+ * The same syllable spelled with the final it actually *sounds* like.
+ *
+ * 볶 → 복, 없 → 업, 몫 → 목. Korean neutralises every final into one of seven
+ * sounds, so these pairs are homophones — which is exactly what ด่าน 5 teaches.
+ *
+ * The app relies on this for audio: only the seven-sound syllables are
+ * pre-rendered, and everything else plays its neutralised twin. That is not a
+ * shortcut around missing clips — a recording of 볶 would be bit-for-bit the
+ * same sound as 복, so a second file would only be a second copy.
+ *
+ * Only true for a syllable read in isolation or before a consonant. Before a
+ * vowel the final resurfaces and slides into the next syllable (연음) — see
+ * LIAISON in finals.ts.
+ */
+export function neutralizedSyllable(initial: string, medial: string, final = ""): string {
+  return composeSyllable(initial, medial, NEUTRALIZE[final] ?? "");
+}
+
+/**
+ * The same for already-composed text: 볶 → 복, 깊 → 깁, 몫 → 목.
+ *
+ * Lets a written example be looked up against the pre-rendered syllable clips
+ * without a second recording of a sound we already have. Non-Hangul characters
+ * pass through untouched.
+ */
+export function spokenForm(text: string): string {
+  return Array.from(text)
+    .map((ch) => {
+      const code = ch.charCodeAt(0) - 0xac00;
+      if (code < 0 || code > 11171) return ch;
+      const final = FINAL_ORDER[code % 28];
+      const plain = NEUTRALIZE[final] ?? "";
+      if (plain === final) return ch;
+      return String.fromCharCode(0xac00 + (code - (code % 28)) + (FINAL_INDEX[plain] ?? 0));
+    })
+    .join("");
 }
 
 const ROM_INITIAL: Record<string, string> = {
@@ -439,15 +566,18 @@ const ROM_INITIAL: Record<string, string> = {
 const ROM_MEDIAL: Record<string, string> = {};
 VOWELS.forEach((v) => (ROM_MEDIAL[v.ch] = v.rom));
 
-/** Finals neutralise: only 7 sounds survive at the end of a syllable. */
+/**
+ * Finals neutralise: only 7 sounds survive at the end of a syllable, so the
+ * romanization is keyed on the surviving sound, not on the letter written.
+ */
 const ROM_FINAL: Record<string, string> = {
-  "": "", "ㄱ": "k", "ㄴ": "n", "ㄷ": "t", "ㄹ": "l", "ㅁ": "m", "ㅂ": "p", "ㅅ": "t", "ㅇ": "ng",
+  "": "", "ㄱ": "k", "ㄴ": "n", "ㄷ": "t", "ㄹ": "l", "ㅁ": "m", "ㅂ": "p", "ㅇ": "ng",
 };
 
 export function romanizeSyllable(initial: string, medial: string, final = ""): string {
   return (
     (ROM_INITIAL[initial] ?? "") +
     (ROM_MEDIAL[medial] ?? "") +
-    (ROM_FINAL[final] ?? "")
+    (ROM_FINAL[NEUTRALIZE[final] ?? ""] ?? "")
   );
 }

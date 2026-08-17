@@ -13,7 +13,7 @@
  * Providers: google (default) | azure | elevenlabs — see .env.example.
  */
 
-import { mkdir, readFile, writeFile, access } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile, access } from "node:fs/promises";
 import { constants } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,6 +53,9 @@ const compose = (i, m, f = "") =>
   );
 
 const hex = (s) => Array.from(s).map((c) => c.codePointAt(0).toString(16)).join("-");
+
+/** Must match AudioBucket in src/lib/audio.ts. */
+const BUCKETS = ["name", "sound", "syl", "word"];
 
 // --- Build the job list -----------------------------------------------------
 async function buildJobs() {
@@ -216,7 +219,6 @@ async function main() {
   }
 
   const jobs = await buildJobs();
-  const allKeys = [...jobs.keys()].sort();
 
   const todo = [];
   for (const [key, job] of jobs) {
@@ -234,7 +236,7 @@ async function main() {
     return;
   }
 
-  for (const bucket of ["name", "sound", "syl", "word"]) {
+  for (const bucket of BUCKETS) {
     await mkdir(join(OUT, bucket), { recursive: true });
   }
 
@@ -266,10 +268,24 @@ async function main() {
 
   // The manifest tells the client which clips exist, so a missing one falls
   // back to speechSynthesis instead of firing a 404 on every tap.
+  //
+  // Built from what is actually on disk, not from this run's job list: a run
+  // without --finals asks for a small fraction of the library, and listing only
+  // those would silently un-publish every clip the flag generates — the files
+  // stay put, the app just stops believing in them.
   const present = [];
-  for (const key of allKeys) {
-    if (await exists(join(OUT, `${key}.mp3`))) present.push(key);
+  for (const bucket of BUCKETS) {
+    let names = [];
+    try {
+      names = await readdir(join(OUT, bucket));
+    } catch {
+      continue; // bucket never generated
+    }
+    for (const name of names) {
+      if (name.endsWith(".mp3")) present.push(`${bucket}/${name.slice(0, -4)}`);
+    }
   }
+  present.sort();
   await writeFile(
     join(OUT, "manifest.json"),
     JSON.stringify({ generated: new Date().toISOString(), keys: present }),
