@@ -225,44 +225,65 @@ export function CardsScreen({
                 ? `ทั้งหมด ${TOTAL_CARDS} ใบ · ALL CARDS`
                 : `ด่าน ${stage} · THIS STAGE`}
             </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(56px, 1fr))",
-                gap: 8,
-              }}
-            >
-              {deck.map((d, i) => {
-                const on = i === idx;
-                return (
-                  <button
-                    key={d.key}
-                    type="button"
-                    onClick={() => setIndex(i)}
-                    aria-label={tileLabel(d)}
-                    className="tile"
+            {bandsOf(deck).map((band, bi) => (
+              <div key={band.label ?? bi}>
+                {band.label ? (
+                  <div
                     style={{
-                      cursor: "pointer",
-                      aspectRatio: "1",
-                      borderRadius: 16,
-                      fontFamily: KO,
-                      fontSize: 24,
-                      display: "grid",
-                      placeItems: "center",
-                      background: on
-                        ? C.pinkTint
-                        : progress.learned[d.key]
-                          ? C.blueTint
-                          : C.surface,
-                      border: `2px solid ${on ? C.pink : C.border}`,
-                      color: C.ink,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      letterSpacing: "0.6px",
+                      color: AMBER.text,
+                      margin: bi === 0 ? "0 0 8px" : "14px 0 8px",
                     }}
                   >
-                    {d.glyph}
-                  </button>
-                );
-              })}
-            </div>
+                    {band.label}
+                  </div>
+                ) : null}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(56px, 1fr))",
+                    gap: 8,
+                  }}
+                >
+                  {band.cards.map(({ card: d, index: i }) => {
+                    const on = i === idx;
+                    // A แม่ name is Thai and four characters long, so it takes
+                    // the UI font at a size that fits the same square as a jamo.
+                    const thaiTile = d.kind === "final";
+                    return (
+                      <button
+                        key={d.key}
+                        type="button"
+                        onClick={() => setIndex(i)}
+                        aria-label={tileLabel(d)}
+                        className="tile"
+                        style={{
+                          cursor: "pointer",
+                          aspectRatio: "1",
+                          borderRadius: 16,
+                          fontFamily: thaiTile ? "inherit" : KO,
+                          fontSize: thaiTile ? 13 : 24,
+                          fontWeight: thaiTile ? 800 : 400,
+                          display: "grid",
+                          placeItems: "center",
+                          background: on
+                            ? C.pinkTint
+                            : progress.learned[d.key]
+                              ? C.blueTint
+                              : C.surface,
+                          border: `2px solid ${on ? C.pink : C.border}`,
+                          color: C.ink,
+                        }}
+                      >
+                        {d.glyph}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </aside>
       </div>
@@ -327,6 +348,24 @@ const BADGE: Record<Card["kind"], string> = {
   final: "ตัวสะกด FINAL",
   cluster: "ตัวสะกดประสม CLUSTER",
 };
+
+/**
+ * Split a deck into consecutive runs sharing a band label.
+ *
+ * The letter stages carry no label and come back as one unlabelled run, so
+ * their grid is unchanged. The 받침 decks are authored already sorted by band,
+ * which is why a plain run-length pass is enough — and why it cannot silently
+ * scatter one heading across the grid if the data order ever changes.
+ */
+function bandsOf(deck: Card[]) {
+  const bands: Array<{ label?: string; cards: Array<{ card: Card; index: number }> }> = [];
+  deck.forEach((card, index) => {
+    const last = bands[bands.length - 1];
+    if (last && last.label === card.band) last.cards.push({ card, index });
+    else bands.push({ label: card.band, cards: [{ card, index }] });
+  });
+  return bands;
+}
 
 function tileLabel(card: Card): string {
   if (card.kind === "letter") return card.jamo.name;
@@ -438,35 +477,38 @@ function LetterBody({ card }: { card: Jamo }) {
  * if they really are one recording.
  */
 function FinalBody({ group }: { group: FinalGroup }) {
-  const [demo] = group.examples;
+  // When every example reads the same in Thai — แม่กด's seven all read พัด —
+  // say it once underneath instead of printing it on every tile. Repeating it
+  // seven times is what made this card a wall of rows.
+  const uniform = new Set(group.examplesThai).size === 1 && group.examples.length > 1;
+
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 18,
-          padding: "10px 0 4px",
-        }}
-      >
+      {/* The PDF's cell: the แม่ name, its letters, then เช่น + examples.
+          Same three lines, in the same order. */}
+      <div style={{ textAlign: "center", padding: "6px 0 14px" }}>
+        <div
+          style={{
+            fontSize: "clamp(30px, 8vw, 40px)",
+            fontWeight: 800,
+            letterSpacing: "-0.5px",
+            lineHeight: 1.1,
+          }}
+        >
+          {group.mae}
+        </div>
         <div
           style={{
             fontFamily: KO,
-            fontSize: "clamp(76px, 17vw, 118px)",
-            lineHeight: 1.05,
+            fontSize: "clamp(24px, 6vw, 32px)",
             color: C.ink,
+            margin: "6px 0 2px",
           }}
         >
-          {demo}
+          {group.finals.join(" , ")}
         </div>
-        <SpeakerButton text={spokenForm(demo)} bucket="syl" label={`ฟังเสียง ${group.mae}`} />
-      </div>
-
-      <div style={{ textAlign: "center", marginBottom: 14 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.3px" }}>{group.mae}</div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.inkFaint, marginTop: 2 }}>
-          <span style={{ fontFamily: KO }}>{group.finals.join(" ")}</span> · เสียงไทย {group.thai}
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.inkFaint }}>
+          ตัวสะกด {group.finals.length} ตัว · เสียงไทย {group.thai}
         </div>
       </div>
 
@@ -485,52 +527,86 @@ function FinalBody({ group }: { group: FinalGroup }) {
               fontWeight: 800,
               letterSpacing: "1.1px",
               color: AMBER.text,
-              marginBottom: 8,
+              marginBottom: 9,
             }}
           >
-            {group.finals.length} ตัวอักษร · 1 เสียง
+            เช่น · แตะเพื่อฟัง
           </div>
-          <div style={{ display: "grid", gap: 8 }}>
+          {/* One tile per letter instead of one full-width row: seven of them
+              wrap into two lines rather than seven, which is the whole
+              difference between this card fitting a phone screen and not. */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(66px, 1fr))",
+              gap: 8,
+            }}
+          >
             {group.finals.map((f, i) => (
               <button
                 key={f}
                 type="button"
                 onClick={() => void speakKo(spokenForm(group.examples[i]), "syl")}
-                aria-label={`ฟัง ${group.examples[i]} — ${f} เป็นตัวสะกด`}
+                aria-label={`ฟัง ${group.examples[i]} (${group.examplesThai[i]}) — ${f} เป็นตัวสะกด`}
+                className="tile"
                 style={{
                   cursor: "pointer",
                   background: C.surface,
                   border: `2px solid ${AMBER.border}`,
                   borderRadius: 14,
-                  padding: "9px 11px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  textAlign: "left",
+                  padding: "8px 4px 7px",
+                  display: "grid",
+                  justifyItems: "center",
+                  gap: 1,
                 }}
               >
-                <span style={{ color: "#C79A4A", flex: "0 0 auto", display: "grid" }}>
-                  <SpeakerIcon size={17} />
-                </span>
-                <span style={{ fontFamily: KO, fontSize: 20, fontWeight: 800, minWidth: 34 }}>
-                  {f}
-                </span>
-                <span style={{ fontFamily: KO, fontSize: 22, color: C.ink }}>
-                  {group.examples[i]}
-                </span>
                 <span
                   style={{
-                    marginLeft: "auto",
-                    fontSize: 12.5,
+                    fontFamily: KO,
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: AMBER.text,
+                  }}
+                >
+                  {f}
+                </span>
+                <span style={{ fontFamily: KO, fontSize: 26, color: C.ink, lineHeight: 1.15 }}>
+                  {group.examples[i]}
+                </span>
+                {/* The speaker sits on every tile, including the groups whose
+                    reading is printed once underneath instead of per tile —
+                    otherwise แม่กน looks unplayable next to แม่กก. */}
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontSize: 11.5,
                     fontWeight: 700,
                     color: AMBER.ink,
                   }}
                 >
-                  = {group.thai}
+                  {uniform ? null : group.examplesThai[i]}
+                  <SpeakerIcon size={13} />
                 </span>
               </button>
             ))}
           </div>
+          {uniform ? (
+            <p
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: AMBER.ink,
+                margin: "10px 0 0",
+                textAlign: "center",
+              }}
+            >
+              ทั้ง {group.examples.length} ตัวอ่านว่า{" "}
+              <span style={{ fontSize: 16, fontWeight: 800 }}>{group.examplesThai[0]}</span>{" "}
+              เหมือนกันหมด
+            </p>
+          ) : null}
         </div>
 
         <InfoBox
@@ -582,9 +658,12 @@ function LiaisonBox() {
       >
         {LIAISON.rule}
       </p>
+      {/* Only the spoken side plays. 날을 and 나를 are the same sounds —
+          /na.ɾɯl/ — so a speaker under the spelling would either repeat the
+          other clip or, worse, offer a second synthesis whose prosody differs
+          and reads as the two forms being pronounced differently. */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <AudioChip
-          onClick={() => void speakKo(LIAISON.written, "word")}
           caption="เขียน"
           value={LIAISON.written}
           tint={C.surface}
@@ -636,9 +715,9 @@ function ClusterBody({ cluster }: { cluster: Cluster }) {
           {cluster.ch}
         </div>
         <SpeakerButton
-          text={cluster.word}
+          text={cluster.said}
           bucket="word"
-          label={`ฟังคำว่า ${cluster.word} (${cluster.gloss})`}
+          label={`ฟังคำว่า ${cluster.word} อ่านว่า ${cluster.said} (${cluster.gloss})`}
         />
       </div>
 
@@ -700,7 +779,6 @@ function ClusterBody({ cluster }: { cluster: Cluster }) {
       <div style={{ display: "grid", gap: 10 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <AudioChip
-            onClick={() => void speakKo(cluster.word, "word")}
             caption="เขียน"
             value={cluster.word}
             note={cluster.gloss}
@@ -712,11 +790,25 @@ function ClusterBody({ cluster }: { cluster: Cluster }) {
             onClick={() => void speakKo(cluster.said, "word")}
             caption="อ่านจริง"
             value={cluster.said}
+            note={cluster.saidThai}
             tint={C.blueTint}
             border={C.blueBorder}
             fg={C.blueText}
           />
         </div>
+
+        {/* Where the Thai reading contradicts the spelling, say so — otherwise
+            the clip sounds broken and the student stops trusting the audio. */}
+        {cluster.earNote ? (
+          <InfoBox
+            label="ฟังแล้วต่างจากที่เขียน · LISTEN"
+            text={cluster.earNote}
+            bg={C.pinkTint2}
+            border="#F6DCE6"
+            labelColor={C.pinkText}
+            textColor="#6E5763"
+          />
+        ) : null}
 
         {cluster.exception ? (
           <div
@@ -751,7 +843,6 @@ function ClusterBody({ cluster }: { cluster: Cluster }) {
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <AudioChip
-                onClick={() => void speakKo(cluster.exception!.word, "word")}
                 caption="เขียน"
                 value={cluster.exception.word}
                 note={cluster.exception.gloss}
@@ -763,6 +854,7 @@ function ClusterBody({ cluster }: { cluster: Cluster }) {
                 onClick={() => void speakKo(cluster.exception!.said, "word")}
                 caption="อ่านจริง"
                 value={cluster.exception.said}
+                note={cluster.exception.saidThai}
                 tint={C.surface}
                 border={AMBER.border}
                 fg={AMBER.text}
@@ -849,6 +941,14 @@ function PositionSounds({ card }: { card: Jamo }) {
   );
 }
 
+/**
+ * A caption over a Korean value. Plays a clip when given an `onClick`, and is
+ * inert without one.
+ *
+ * The silent form exists for the "เขียน" half of a written/spoken pair. There
+ * is only ever one sound in such a pair — the spoken one — so offering a second
+ * speaker under the spelling promises a difference that does not exist.
+ */
 function AudioChip({
   onClick,
   caption,
@@ -858,7 +958,7 @@ function AudioChip({
   border,
   fg,
 }: {
-  onClick: () => void;
+  onClick?: () => void;
   caption: string;
   value: string;
   note?: string;
@@ -866,44 +966,47 @@ function AudioChip({
   border: string;
   fg: string;
 }) {
+  const style: React.CSSProperties = {
+    background: tint,
+    border: `2px solid ${border}`,
+    borderRadius: 18,
+    padding: "10px 12px",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    textAlign: "left",
+  };
+
+  const body = (
+    <span style={{ minWidth: 0 }}>
+      <span
+        style={{
+          display: "block",
+          fontSize: 10.5,
+          fontWeight: 800,
+          letterSpacing: "0.9px",
+          color: fg,
+        }}
+      >
+        {caption}
+      </span>
+      <span style={{ display: "block", fontFamily: KO, fontSize: 18, color: C.ink }}>
+        {value}
+        {note ? (
+          <span style={{ fontSize: 12, color: C.inkFaint, marginLeft: 6 }}>= {note}</span>
+        ) : null}
+      </span>
+    </span>
+  );
+
+  if (!onClick) return <div style={style}>{body}</div>;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        cursor: "pointer",
-        background: tint,
-        border: `2px solid ${border}`,
-        borderRadius: 18,
-        padding: "10px 12px",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        textAlign: "left",
-      }}
-    >
+    <button type="button" onClick={onClick} style={{ ...style, cursor: "pointer" }}>
       <span style={{ color: fg, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
         <SpeakerIcon size={18} />
       </span>
-      <span style={{ minWidth: 0 }}>
-        <span
-          style={{
-            display: "block",
-            fontSize: 10.5,
-            fontWeight: 800,
-            letterSpacing: "0.9px",
-            color: fg,
-          }}
-        >
-          {caption}
-        </span>
-        <span style={{ display: "block", fontFamily: KO, fontSize: 18, color: C.ink }}>
-          {value}
-          {note ? (
-            <span style={{ fontSize: 12, color: C.inkFaint, marginLeft: 6 }}>= {note}</span>
-          ) : null}
-        </span>
-      </span>
+      {body}
     </button>
   );
 }

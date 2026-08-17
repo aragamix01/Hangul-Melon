@@ -440,20 +440,30 @@ export const CURRICULA: Record<CurriculumId, Curriculum> = {
  * two more shapes that are not letters at all — a *sound* shared by several
  * letters, and a two-letter cluster read as one.
  */
-export type Card =
-  | { kind: "letter"; key: string; glyph: string; jamo: Jamo }
-  | { kind: "final"; key: string; glyph: string; group: FinalGroup }
-  | { kind: "cluster"; key: string; glyph: string; cluster: Cluster };
+export type Card = { key: string; glyph: string; band?: string } & (
+  | { kind: "letter"; jamo: Jamo }
+  | { kind: "final"; group: FinalGroup }
+  | { kind: "cluster"; cluster: Cluster }
+);
 
 const CARD_BY_KEY: Record<string, Card> = {};
 [...CONSONANTS, ...VOWELS].forEach((j) => {
   CARD_BY_KEY[j.ch] = { kind: "letter", key: j.ch, glyph: j.ch, jamo: j };
 });
+// A final-sound card *is* one แม่ group, so the tile carries the group's name
+// and needs no heading above it — seven headings over one tile each was taller
+// than the deck it indexed.
 FINAL_GROUPS.forEach((g) => {
-  CARD_BY_KEY[g.key] = { kind: "final", key: g.key, glyph: g.examples[0], group: g };
+  CARD_BY_KEY[g.key] = { kind: "final", key: g.key, glyph: g.mae, group: g };
 });
 CLUSTERS.forEach((c) => {
-  CARD_BY_KEY[c.key] = { kind: "cluster", key: c.key, glyph: c.ch, cluster: c };
+  CARD_BY_KEY[c.key] = {
+    kind: "cluster",
+    key: c.key,
+    glyph: c.ch,
+    band: `ออกเสียงตัว${c.side}`,
+    cluster: c,
+  };
 });
 
 /** The deck for one stage, or every card in teaching order when stage is 0. */
