@@ -31,7 +31,7 @@ const notoKr = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "Hangul Melon · เรียนอักษรเกาหลี 40 ตัว",
+  title: "Hangul Melon · เรียนพยัญชนะและสระเกาหลี",
   description:
     "เรียนพยัญชนะและสระเกาหลีครบ 40 ตัว เรียงตามลำดับที่จำง่าย พร้อมเสียงอ่านเจ้าของภาษา บัตรคำ ผสมคำ และเกมฝึก",
   applicationName: "Hangul Melon",
