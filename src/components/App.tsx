@@ -8,6 +8,7 @@ import { Header } from "./Header";
 import { Nav, type Screen } from "./Nav";
 import { HomeScreen } from "./HomeScreen";
 import { CardsScreen } from "./CardsScreen";
+import { LearnScreen } from "./LearnScreen";
 import { BuilderScreen } from "./BuilderScreen";
 import { PlayScreen } from "./PlayScreen";
 import { C } from "./theme";
@@ -81,6 +82,7 @@ export default function App() {
               onLearned={markLearned}
             />
           )}
+          {screen === "learn" && <LearnScreen progress={progress} />}
           {screen === "build" && <BuilderScreen curriculum={curriculum} />}
           {screen === "play" && <PlayScreen curriculum={curriculum} progress={progress} />}
         </main>

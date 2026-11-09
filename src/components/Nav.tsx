@@ -2,11 +2,12 @@
 
 import { C, KO } from "./theme";
 
-export type Screen = "home" | "cards" | "build" | "play";
+export type Screen = "home" | "cards" | "learn" | "build" | "play";
 
 const ITEMS: Array<{ id: Screen; glyph: string; label: string }> = [
   { id: "home", glyph: "한", label: "หน้าแรก" },
   { id: "cards", glyph: "ㄱ", label: "บัตรคำ" },
+  { id: "learn", glyph: "복", label: "เรียนรู้" },
   { id: "build", glyph: "가", label: "ผสมคำ" },
   { id: "play", glyph: "★", label: "ฝึกเล่น" },
 ];
