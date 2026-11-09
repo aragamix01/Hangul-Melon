@@ -17,7 +17,7 @@ import { speakKo, stopAudio } from "@/lib/audio";
 import { ALL_JAMO, distractorsFor, traceScore, type Point } from "@/lib/similarity";
 import { dueKeys, type SrsState } from "@/lib/srs";
 import { C, KO } from "./theme";
-import { card, eyebrow, Glyph, primary, quiet, SoundButton, StepBars, StepHeader } from "./learnUi";
+import { card, eyebrow, Glyph, primary, quiet, SoundButton, SpeakerGlyph, StepHeader } from "./learnUi";
 
 const shuffle = <T,>(a: T[]): T[] =>
   a
@@ -482,8 +482,12 @@ function MeetStep({
                 fontWeight: 800,
                 cursor: "pointer",
                 minHeight: 44,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
               }}
             >
+              <SpeakerGlyph size={18} />
               ชื่อตัวอักษร
             </button>
             <button
@@ -499,8 +503,12 @@ function MeetStep({
                 fontWeight: 800,
                 cursor: "pointer",
                 minHeight: 44,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
               }}
             >
+              <SpeakerGlyph size={18} />
               พยางค์ {j.demo}
             </button>
           </div>
@@ -722,12 +730,26 @@ function TraceStep({
     return [((e.clientX - box.left) / box.width) * 100, ((e.clientY - box.top) / box.height) * 100];
   };
 
+  const clear = () => {
+    setStrokes([]);
+    setCurrent(null);
+    setResult(null);
+    setReveal(false);
+  };
+
   const start = (e: React.PointerEvent) => {
-    if (result) return;
+    // A correct letter is finished. A wrong one is not: drawing on it again is
+    // how a student retries, so the first touch wipes the failed attempt.
+    if (result === "ok") return;
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
       /* no capture for this pointer — the stroke still tracks fine */
+    }
+    if (result === "no") {
+      setStrokes([]);
+      setResult(null);
+      setReveal(false);
     }
     setCurrent([at(e)]);
   };
@@ -813,12 +835,12 @@ function TraceStep({
                 pointerEvents: "none",
               }}
             >
-              {result === "ok" ? "ถูกต้อง" : result === "no" ? "ยังไม่ตรง ดูเฉลย" : `ลากแล้ว ${strokes.length} เส้น`}
+              {result === "ok" ? "ถูกต้อง" : result === "no" ? "ยังไม่ตรง · ลากใหม่ได้เลย" : `ลากแล้ว ${strokes.length} เส้น`}
             </div>
           </div>
 
           <div style={{ display: "flex", gap: 9, width: "100%" }}>
-            <button type="button" style={{ ...quiet, flex: 1 }} onClick={() => { setStrokes([]); setCurrent(null); }}>
+            <button type="button" style={{ ...quiet, flex: 1 }} onClick={clear}>
               ลบแล้วเริ่มใหม่
             </button>
             <button type="button" style={{ ...quiet, flex: 1 }} onClick={() => setReveal(true)}>
