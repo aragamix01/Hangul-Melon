@@ -163,12 +163,15 @@ type Phase = "brief" | "meet" | "pairs" | "trace" | "type" | "words" | "done";
 export function DayFlow({
   day,
   session,
+  replay,
   onAnswer,
   onFinish,
   onExit,
 }: {
   day: PathDay;
   session: DaySession;
+  /** True when this day was already finished and is being run again */
+  replay?: boolean;
   onAnswer: (ch: string, ok: boolean, picked?: string) => void;
   onFinish: (right: number, total: number) => void;
   onExit: () => void;
@@ -263,6 +266,7 @@ export function DayFlow({
       session={session}
       right={right}
       asked={asked}
+      replay={replay}
       onClose={() => {
         onFinish(right, asked);
         onExit();
@@ -1109,19 +1113,21 @@ function DoneStep({
   session,
   right,
   asked,
+  replay,
   onClose,
 }: {
   day: PathDay;
   session: DaySession;
   right: number;
   asked: number;
+  replay?: boolean;
   onClose: () => void;
 }) {
   const next = day.day + 1;
   return (
     <div style={{ animation: "pop 0.35s ease both", display: "grid", gap: 12 }}>
       <div style={{ textAlign: "center", padding: "18px 0 4px" }}>
-        <div style={eyebrow}>เซ็ตที่ {day.day} · จบแล้ว</div>
+        <div style={eyebrow}>เซ็ตที่ {day.day} · {replay ? "ทบทวนซ้ำ" : "จบแล้ว"}</div>
         <div style={{ fontSize: 25, fontWeight: 800, letterSpacing: "-0.5px", marginTop: 4 }}>
           ถูก {right} จาก {asked}
         </div>
@@ -1151,7 +1157,7 @@ function DoneStep({
         </div>
       </section>
 
-      {next <= 14 && (
+      {!replay && next <= 14 && (
         <section style={{ ...card, background: C.blueTint, borderColor: C.blueBorder }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: C.blueInk }}>พรุ่งนี้ · เซ็ตที่ {next}</div>
         </section>

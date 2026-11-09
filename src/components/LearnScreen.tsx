@@ -10,7 +10,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { PATH_DAYS } from "@/data/path";
+import { PATH_DAYS, type PathDay } from "@/data/path";
 import type { Progress } from "@/lib/progress";
 import { useSrs } from "@/lib/srs";
 import { buildSession, DayFlow, type DaySession } from "./DayFlow";
@@ -64,7 +64,7 @@ export function LearnScreen({ progress }: { progress: Progress }) {
    * the live record would reshuffle the question under the student every time
    * an answer is recorded.
    */
-  const [open, setOpen] = useState<DaySession | null>(null);
+  const [open, setOpen] = useState<{ day: PathDay; session: DaySession } | null>(null);
 
   const today = useMemo(
     () => PATH_DAYS.find((d) => !srs.days[String(d.day)]) ?? PATH_DAYS[PATH_DAYS.length - 1],
@@ -74,16 +74,16 @@ export function LearnScreen({ progress }: { progress: Progress }) {
   const session = useMemo(() => buildSession(today, srs), [today, srs]);
 
   const done = PATH_DAYS.filter((d) => srs.days[String(d.day)]);
-  const recent = done.slice(-2);
   const tomorrow = PATH_DAYS.find((d) => d.day === today.day + 1);
 
   if (open) {
     return (
       <DayFlow
-        day={today}
-        session={open}
+        day={open.day}
+        session={open.session}
+        replay={!!srs.days[String(open.day.day)]}
         onAnswer={answer}
-        onFinish={(right, total) => finishDay(today.day, right, total)}
+        onFinish={(right, total) => finishDay(open.day.day, right, total)}
         onExit={() => setOpen(null)}
       />
     );
@@ -113,14 +113,18 @@ export function LearnScreen({ progress }: { progress: Progress }) {
         </div>
       </div>
 
-      {recent.map((d, n) => {
+      {done.map((d, n) => {
         const r = srs.days[String(d.day)];
         return (
           <div key={d.day} style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <Stop first={n === 0} tone="done">
               ✓
             </Stop>
-            <div
+            {/* A finished day stays open: its set can be run again any time,
+                and a better score replaces the one on the row. */}
+            <button
+              type="button"
+              onClick={() => setOpen({ day: d, session: buildSession(d, srs) })}
               style={{
                 flexGrow: 1,
                 background: C.surface,
@@ -130,6 +134,10 @@ export function LearnScreen({ progress }: { progress: Progress }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
+                cursor: "pointer",
+                textAlign: "left",
+                font: "inherit",
+                color: C.ink,
               }}
             >
               <div style={{ flexGrow: 1 }}>
@@ -137,19 +145,19 @@ export function LearnScreen({ progress }: { progress: Progress }) {
                   วันที่ {d.day} · {d.title}
                 </div>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: C.inkSoft, marginTop: 2 }}>
-                  ถูก {r.right} / {r.total}
+                  ถูก {r.right} / {r.total} · แตะเพื่อเล่นซ้ำ
                 </div>
               </div>
               <div style={{ fontFamily: KO, fontSize: 17, color: C.blueText, letterSpacing: 3 }}>
                 {d.chars.join("")}
               </div>
-            </div>
+            </button>
           </div>
         );
       })}
 
       <div style={{ display: "flex", gap: 12 }}>
-        <Stop first={recent.length === 0} tone="today">
+        <Stop first={done.length === 0} tone="today">
           {today.day}
         </Stop>
 
@@ -236,7 +244,7 @@ export function LearnScreen({ progress }: { progress: Progress }) {
             type="button"
             className="btn-pink"
             style={{ ...primary, marginTop: 14 }}
-            onClick={() => setOpen(buildSession(today, srs))}
+            onClick={() => setOpen({ day: today, session: buildSession(today, srs) })}
           >
             เปิดเซ็ตวันนี้
           </button>
