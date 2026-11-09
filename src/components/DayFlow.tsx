@@ -1015,9 +1015,14 @@ function WordStep({
   const [picked, setPicked] = useState<string | null>(null);
   const q = questions[i];
 
+  const play = useCallback(() => void speakKo(q.syllable, "syl"), [q]);
+
+  // The syllable plays itself once on arrival, the way the other steps do.
   useEffect(() => {
     setPicked(null);
-  }, [q]);
+    const t = setTimeout(play, 250);
+    return () => clearTimeout(t);
+  }, [play]);
 
   const choose = (opt: string) => {
     if (picked) return;
@@ -1037,23 +1042,7 @@ function WordStep({
           <div style={{ fontFamily: KO, fontSize: 15, color: C.inkSoft }}>
             {q.lead.ch} + {q.medial.ch}
           </div>
-          <button
-            type="button"
-            onClick={() => void speakKo(q.syllable, "syl")}
-            style={{
-              border: `2px solid ${C.borderStrong}`,
-              background: C.pinkTint,
-              color: C.pinkText,
-              borderRadius: 18,
-              padding: "11px 18px",
-              fontSize: 13.5,
-              fontWeight: 800,
-              cursor: "pointer",
-              minHeight: 44,
-            }}
-          >
-            ฟังก่อนตอบ
-          </button>
+          <SoundButton size={72} onClick={play} label="ฟังพยางค์นี้อีกครั้ง" />
         </section>
 
         <div style={{ fontSize: 13.5, fontWeight: 800, paddingLeft: 4 }}>อ่านว่าอะไร</div>
