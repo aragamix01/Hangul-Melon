@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { JAMO_BY_CHAR, VOICING, type Jamo } from "@/data/hangul";
 import { compose, thaiSyllable, READABLE_VOWELS, type PathDay } from "@/data/path";
-import { speakKo, stopAudio } from "@/lib/audio";
+import { speakKo, stopAudio, type AudioBucket } from "@/lib/audio";
 import { ALL_JAMO, distractorsFor, traceScore, type Point } from "@/lib/similarity";
 import { dueKeys, stalest, weakest, weakness, type SrsState } from "@/lib/srs";
 import { C, KO, KO_FACES } from "./theme";
@@ -35,6 +35,25 @@ const shortThai = (j: Jamo) => {
   const t = head(j.thai);
   return Array.from(t).length <= 8 ? t : j.rom;
 };
+
+/**
+ * What to play when asking "which letter is this".
+ *
+ * The demo syllable is the better prompt for almost every letter — 하 and 카
+ * are distinguishable where 히읗 and 키읔 are not. But ㅇ carries no sound of
+ * its own, so its demo is 아, which is also ㅏ's demo: the two questions sound
+ * identical and neither answer can be right. For any letter whose syllable is
+ * shared, the letter name is the only prompt that identifies it, and 이응
+ * against 아 is not a hard listen.
+ */
+const SHARED_DEMO = (() => {
+  const seen = new Map<string, number>();
+  for (const j of ALL_JAMO) seen.set(j.demo, (seen.get(j.demo) ?? 0) + 1);
+  return new Set(ALL_JAMO.filter((j) => (seen.get(j.demo) ?? 0) > 1).map((j) => j.ch));
+})();
+
+const prompt = (j: Jamo): [string, AudioBucket] =>
+  SHARED_DEMO.has(j.ch) ? [j.nameKo, "name"] : [j.demo, "sound"];
 
 /** The 두벌식 layout, the one a Korean phone keyboard actually uses. */
 const KEY_ROWS = [
@@ -545,7 +564,7 @@ function GuessStep({
   const options = useMemo(() => shuffle(items), [items]);
   const [picked, setPicked] = useState<string | null>(null);
 
-  const play = useCallback(() => void speakKo(answer.demo, "sound", { vary: true }), [answer]);
+  const play = useCallback(() => void speakKo(...prompt(answer), { vary: true }), [answer]);
 
   useEffect(() => {
     const t = setTimeout(play, 300);
@@ -808,7 +827,7 @@ function PairStep({
    * so the two are genuinely near-identical as names. 하 and 카 are not: the
    * sound being taught is the one in a syllable, and that is what plays here.
    */
-  const play = useCallback(() => void speakKo(q.answer.demo, "sound", { vary: true }), [q]);
+  const play = useCallback(() => void speakKo(...prompt(q.answer), { vary: true }), [q]);
 
   useEffect(() => {
     setPicked(null);
@@ -894,7 +913,7 @@ function PairStep({
                 <button
                   key={opt.ch}
                   type="button"
-                  onClick={() => void speakKo(opt.demo, "sound")}
+                  onClick={() => void speakKo(...prompt(opt))}
                   style={{
                     flex: 1,
                     border: `2px solid ${opt.ch === q.answer.ch ? C.blueBorderStrong : C.border}`,
@@ -913,7 +932,7 @@ function PairStep({
                   }}
                 >
                   <SpeakerGlyph size={16} />
-                  <span style={{ fontFamily: KO }}>{opt.demo}</span>
+                  <span style={{ fontFamily: KO }}>{prompt(opt)[0]}</span>
                 </button>
               ))}
             </div>
@@ -962,7 +981,7 @@ function TraceStep({
     setCurrent(null);
     setResult(null);
     setReveal(false);
-    const t = setTimeout(() => void speakKo(j.demo, "sound", { vary: true }), 250);
+    const t = setTimeout(() => void speakKo(...prompt(j), { vary: true }), 250);
     return () => clearTimeout(t);
   }, [j]);
 
@@ -1027,7 +1046,7 @@ function TraceStep({
       <div style={{ display: "grid", gap: 12 }}>
         <section style={{ ...card, display: "grid", justifyItems: "center", gap: 12, borderRadius: 26 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, width: "100%" }}>
-            <SoundButton size={56} onClick={() => void speakKo(j.demo, "sound", { vary: true })} />
+            <SoundButton size={56} onClick={() => void speakKo(...prompt(j), { vary: true })} />
             <div style={{ fontSize: 14, fontWeight: 800 }}>
               {j.kind === "consonant" ? "เขียนพยัญชนะต้นที่ได้ยิน" : "เขียนสระที่ได้ยิน"}
             </div>
@@ -1127,7 +1146,7 @@ function TypeStep({
   useEffect(() => {
     setTyped("");
     setResult(null);
-    const t = setTimeout(() => void speakKo(j.demo, "sound", { vary: true }), 250);
+    const t = setTimeout(() => void speakKo(...prompt(j), { vary: true }), 250);
     return () => clearTimeout(t);
   }, [j]);
 
@@ -1152,7 +1171,7 @@ function TypeStep({
 
       <div style={{ display: "grid", gap: 11 }}>
         <section style={{ ...card, display: "flex", alignItems: "center", gap: 14, borderRadius: 24 }}>
-          <SoundButton size={60} onClick={() => void speakKo(j.demo, "sound", { vary: true })} />
+          <SoundButton size={60} onClick={() => void speakKo(...prompt(j), { vary: true })} />
           <div style={{ fontSize: 14.5, fontWeight: 800 }}>
             {j.kind === "consonant" ? "พิมพ์พยัญชนะต้นที่ได้ยิน" : "พิมพ์สระที่ได้ยิน"}
           </div>
