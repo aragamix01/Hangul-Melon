@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito, Noto_Sans_Thai, Gowun_Dodum, Noto_Sans_KR } from "next/font/google";
+import { Nunito, Noto_Sans_Thai, Gowun_Dodum, Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -30,6 +30,21 @@ const notoKr = Noto_Sans_KR({
   display: "swap",
 });
 
+/**
+ * A third Korean face, used only by the quiz.
+ *
+ * A letter drilled in one typeface for a fortnight is learned as that
+ * typeface's drawing of it, which is no use in front of a shop sign. The
+ * serif's strokes thicken, taper and carry serifs the rounded faces do not,
+ * so recognising a letter across all three means recognising the letter.
+ */
+const notoSerifKr = Noto_Serif_KR({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  variable: "--font-ko-serif",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Hangul Melon · เรียนพยัญชนะและสระเกาหลี",
   description:
@@ -48,7 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="th"
-      className={`${nunito.variable} ${notoThai.variable} ${gowun.variable} ${notoKr.variable}`}
+      className={`${nunito.variable} ${notoThai.variable} ${gowun.variable} ${notoKr.variable} ${notoSerifKr.variable}`}
     >
       <body>{children}</body>
     </html>

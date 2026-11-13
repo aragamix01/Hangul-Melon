@@ -51,17 +51,20 @@ export function Glyph({
   ch,
   size = 44,
   tone = "pink",
+  face = KO,
 }: {
   ch: string;
   size?: number;
   tone?: "pink" | "blue" | "plain";
+  /** Which Korean face to draw it in — the quiz rotates these */
+  face?: string;
 }) {
   const bg = tone === "pink" ? C.pinkTint : tone === "blue" ? C.blueTint : C.surface;
   const bd = tone === "blue" ? C.blueBorder : C.border;
   return (
     <span
       style={{
-        fontFamily: KO,
+        fontFamily: face,
         fontSize: size,
         lineHeight: 1,
         display: "grid",

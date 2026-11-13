@@ -16,7 +16,7 @@ import { compose, thaiSyllable, READABLE_VOWELS, type PathDay } from "@/data/pat
 import { speakKo, stopAudio } from "@/lib/audio";
 import { ALL_JAMO, distractorsFor, traceScore, type Point } from "@/lib/similarity";
 import { dueKeys, stalest, weakest, weakness, type SrsState } from "@/lib/srs";
-import { C, KO } from "./theme";
+import { C, KO, KO_FACES } from "./theme";
 import { card, eyebrow, Glyph, primary, quiet, SoundButton, SpeakerGlyph, StepHeader } from "./learnUi";
 
 const shuffle = <T,>(a: T[]): T[] =>
@@ -108,6 +108,27 @@ function buildWords(lead: Jamo[], medial: Jamo[], limit: number): WordQuestion[]
   return out;
 }
 
+/**
+ * Order the questions so each new letter is asked twice, the second time much
+ * later in the queue.
+ *
+ * Asking a letter again immediately after getting it right is barely a
+ * question: the answer is still in mind. Landauer and Bjork's expanding
+ * retrieval puts a widening gap between attempts — here the three new letters
+ * come round again after three, six and nine other questions, with the review
+ * letters filling the space between.
+ */
+function spaced(fresh: Jamo[], review: Jamo[]): Jamo[] {
+  const again = [...fresh];
+  const rest = [...review];
+  const tail: Jamo[] = [];
+  while (rest.length || again.length) {
+    for (let i = 0; i < 2 && rest.length; i++) tail.push(rest.shift()!);
+    if (again.length) tail.push(again.shift()!);
+  }
+  return [...fresh, ...tail];
+}
+
 export function buildSession(day: PathDay, srs: SrsState): DaySession {
   const fresh = day.chars.map((ch) => JAMO_BY_CHAR[ch]).filter(Boolean);
   const freshSet = new Set(day.chars);
@@ -148,7 +169,7 @@ export function buildSession(day: PathDay, srs: SrsState): DaySession {
   // with — a two-way choice where elimination tells the student nothing. The
   // day's own contrast pair comes round twice more, since one correct guess
   // between two look-alikes proves very little.
-  const asked = [...fresh, ...due].slice(0, day.chars.length ? 10 : 20);
+  const asked = spaced(fresh, due).slice(0, day.chars.length ? 13 : 20);
   if (day.contrast) {
     const [older, newer] = day.contrast;
     if (JAMO_BY_CHAR[older] && JAMO_BY_CHAR[newer]) {
@@ -204,7 +225,7 @@ export function buildSession(day: PathDay, srs: SrsState): DaySession {
   };
 }
 
-type Phase = "brief" | "meet" | "pairs" | "trace" | "type" | "words" | "done";
+type Phase = "guess" | "brief" | "meet" | "pairs" | "trace" | "type" | "words" | "done";
 
 export function DayFlow({
   day,
@@ -267,8 +288,17 @@ export function DayFlow({
       <Brief
         day={day}
         session={session}
-        onStart={() => setPhase(session.fresh.length ? "meet" : "pairs")}
+        onStart={() => setPhase(session.fresh.length ? "guess" : "pairs")}
         onExit={onExit}
+      />
+    );
+  }
+  if (phase === "guess") {
+    return (
+      <GuessStep
+        items={session.fresh}
+        onBack={() => setPhase("brief")}
+        onDone={() => setPhase("meet")}
       />
     );
   }
@@ -489,6 +519,105 @@ function Brief({
   );
 }
 
+/* ---------------------------------------------------------------- guess -- */
+
+/**
+ * Guess before being told.
+ *
+ * Kornell, Hays and Bjork found that trying to answer a question you cannot
+ * possibly know, and getting it wrong, beats studying the answer for the same
+ * length of time. The failed attempt opens the gap that the explanation then
+ * fills. So the day opens on a sound and three letters never seen before, a
+ * guess that is right one time in three, and nothing is scored — the point is
+ * the attempt, and marking it would only punish the student for a question
+ * that was unanswerable by design.
+ */
+function GuessStep({
+  items,
+  onBack,
+  onDone,
+}: {
+  items: Jamo[];
+  onBack: () => void;
+  onDone: () => void;
+}) {
+  const answer = useMemo(() => items[Math.floor(Math.random() * items.length)], [items]);
+  const options = useMemo(() => shuffle(items), [items]);
+  const [picked, setPicked] = useState<string | null>(null);
+
+  const play = useCallback(() => void speakKo(answer.demo, "sound", { vary: true }), [answer]);
+
+  useEffect(() => {
+    const t = setTimeout(play, 300);
+    return () => clearTimeout(t);
+  }, [play]);
+
+  return (
+    <div style={{ animation: "pop 0.35s ease both" }}>
+      <StepHeader step={1} sub="ลองเดาก่อน · ยังไม่ต้องรู้" onBack={onBack} />
+
+      <div style={{ display: "grid", gap: 12 }}>
+        <section style={{ ...card, display: "grid", justifyItems: "center", gap: 13, borderRadius: 26 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: "#7A6472", textAlign: "center" }}>
+            เสียงนี้น่าจะเป็นตัวไหน
+          </div>
+          <SoundButton onClick={play} />
+
+          <div style={{ display: "flex", gap: 10, width: "100%" }}>
+            {options.map((opt) => {
+              const isAnswer = opt.ch === answer.ch;
+              const chosen = picked === opt.ch;
+              const show = picked !== null;
+              return (
+                <button
+                  key={opt.ch}
+                  type="button"
+                  onClick={() => !picked && setPicked(opt.ch)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    border: `2px solid ${show && isAnswer ? C.blueBorderStrong : chosen ? C.badBorder : C.border}`,
+                    background: show && isAnswer ? C.blueTint : chosen ? C.badRed : C.surface,
+                    borderRadius: 20,
+                    padding: "16px 8px",
+                    cursor: picked ? "default" : "pointer",
+                    display: "grid",
+                    justifyItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span style={{ fontFamily: KO, fontSize: 38, lineHeight: 1, color: C.ink }}>{opt.ch}</span>
+                  {show && <span style={{ fontSize: 12, fontWeight: 800, color: C.inkFaint }}>{shortThai(opt)}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {picked && (
+          <section style={{ ...card, borderColor: C.borderStrong }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#7A6472", lineHeight: 1.6 }}>
+              {picked === answer.ch
+                ? `เดาถูก · ${answer.ch} อ่าน ${shortThai(answer)} เดี๋ยวดูทีละตัว`
+                : `ยังไม่ต้องรู้ก็ได้ · เสียงนั้นคือ ${answer.ch} อ่าน ${shortThai(answer)} การเดาผิดทำให้จำตอนเฉลยได้ดีกว่าอ่านเฉย ๆ`}
+            </div>
+          </section>
+        )}
+
+        <button
+          type="button"
+          className="btn-pink"
+          style={{ ...primary, opacity: picked ? 1 : 0.45 }}
+          disabled={!picked}
+          onClick={onDone}
+        >
+          ดูตัวใหม่ทีละตัว
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ----------------------------------------------------------------- meet -- */
 
 function MeetStep({
@@ -667,6 +796,9 @@ function PairStep({
   const q = questions[i];
 
   const options = useMemo(() => shuffle([q.answer, q.other]), [q]);
+  // Both options share one face per question: the task is telling the letters
+  // apart, not telling the typefaces apart.
+  const face = useMemo(() => KO_FACES[Math.floor(Math.random() * KO_FACES.length)], [q]);
 
   /**
    * The syllable, not the letter name.
@@ -676,7 +808,7 @@ function PairStep({
    * so the two are genuinely near-identical as names. 하 and 카 are not: the
    * sound being taught is the one in a syllable, and that is what plays here.
    */
-  const play = useCallback(() => void speakKo(q.answer.demo, "sound"), [q]);
+  const play = useCallback(() => void speakKo(q.answer.demo, "sound", { vary: true }), [q]);
 
   useEffect(() => {
     setPicked(null);
@@ -741,7 +873,7 @@ function PairStep({
                     gap: 7,
                   }}
                 >
-                  <Glyph ch={opt.ch} size={44} tone={idx === 0 ? "pink" : "blue"} />
+                  <Glyph ch={opt.ch} size={44} tone={idx === 0 ? "pink" : "blue"} face={face} />
                   <span style={{ fontSize: 14, fontWeight: 800, color: C.ink }}>{shortThai(opt)}</span>
                 </button>
               );
@@ -830,7 +962,7 @@ function TraceStep({
     setCurrent(null);
     setResult(null);
     setReveal(false);
-    const t = setTimeout(() => void speakKo(j.demo, "sound"), 250);
+    const t = setTimeout(() => void speakKo(j.demo, "sound", { vary: true }), 250);
     return () => clearTimeout(t);
   }, [j]);
 
@@ -895,7 +1027,7 @@ function TraceStep({
       <div style={{ display: "grid", gap: 12 }}>
         <section style={{ ...card, display: "grid", justifyItems: "center", gap: 12, borderRadius: 26 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, width: "100%" }}>
-            <SoundButton size={56} onClick={() => void speakKo(j.demo, "sound")} />
+            <SoundButton size={56} onClick={() => void speakKo(j.demo, "sound", { vary: true })} />
             <div style={{ fontSize: 14, fontWeight: 800 }}>
               {j.kind === "consonant" ? "เขียนพยัญชนะต้นที่ได้ยิน" : "เขียนสระที่ได้ยิน"}
             </div>
@@ -995,7 +1127,7 @@ function TypeStep({
   useEffect(() => {
     setTyped("");
     setResult(null);
-    const t = setTimeout(() => void speakKo(j.demo, "sound"), 250);
+    const t = setTimeout(() => void speakKo(j.demo, "sound", { vary: true }), 250);
     return () => clearTimeout(t);
   }, [j]);
 
@@ -1020,7 +1152,7 @@ function TypeStep({
 
       <div style={{ display: "grid", gap: 11 }}>
         <section style={{ ...card, display: "flex", alignItems: "center", gap: 14, borderRadius: 24 }}>
-          <SoundButton size={60} onClick={() => void speakKo(j.demo, "sound")} />
+          <SoundButton size={60} onClick={() => void speakKo(j.demo, "sound", { vary: true })} />
           <div style={{ fontSize: 14.5, fontWeight: 800 }}>
             {j.kind === "consonant" ? "พิมพ์พยัญชนะต้นที่ได้ยิน" : "พิมพ์สระที่ได้ยิน"}
           </div>

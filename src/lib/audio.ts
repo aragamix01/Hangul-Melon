@@ -22,6 +22,19 @@ const hex = (s: string) =>
     .join("-");
 
 export const audioKey = (bucket: AudioBucket, text: string) => `${bucket}/${hex(text)}`;
+
+/**
+ * Alternate recordings of the same text, if `npm run audio` was run with more
+ * than one voice: `name/d55c-v2`, `-v3`, and so on beside the plain key.
+ *
+ * Training a sound against a single recording teaches the recording. The
+ * classic demonstration is Logan, Lively and Pisoni on /r/ and /l/: learners
+ * trained on many speakers came to hear the contrast and carried it to words
+ * they had never been drilled on, while single-speaker training did not
+ * transfer. ㅎ against ㅋ is the same problem, so the questions that ask which
+ * letter this is pick a voice at random from whatever exists.
+ */
+const VARIANTS = 4;
 const audioUrl = (key: string) => `/audio/${key}.mp3`;
 
 let manifest: Set<string> | null = null;
@@ -109,10 +122,25 @@ function speakFallback(text: string) {
  * (기역) or a syllable (가) — never a bare jamo like "ㄱ". TTS engines read bare
  * jamo inconsistently or skip them entirely.
  */
-export async function speakKo(text: string, bucket: AudioBucket): Promise<void> {
+export async function speakKo(
+  text: string,
+  bucket: AudioBucket,
+  options: { vary?: boolean } = {},
+): Promise<void> {
   if (!text) return;
-  const key = audioKey(bucket, text);
+  const base = audioKey(bucket, text);
   const have = manifest ?? (await loadManifest());
+
+  let key = base;
+  if (options.vary) {
+    const choices = [base];
+    for (let n = 2; n <= VARIANTS; n++) {
+      const alt = `${base}-v${n}`;
+      if (have.has(alt)) choices.push(alt);
+    }
+    key = choices[Math.floor(Math.random() * choices.length)];
+  }
+
   if (have.has(key)) {
     try {
       await playFile(key);

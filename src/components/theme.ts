@@ -38,3 +38,15 @@ export const C = {
 
 /** Korean glyphs must use the Korean face, not the Latin/Thai stack. */
 export const KO = "var(--font-ko), var(--font-ko-sans), serif";
+
+/**
+ * The faces the quiz rotates between, so a letter is recognised rather than a
+ * drawing of it memorised. Teaching screens stay on KO — varying the shape is
+ * a difficulty to add once a letter is being tested, not while it is being
+ * introduced, and the tracing box must match the strokes it is scored against.
+ */
+export const KO_FACES = [
+  KO,
+  "var(--font-ko-sans), var(--font-ko), sans-serif",
+  "var(--font-ko-serif), var(--font-ko), serif",
+] as const;

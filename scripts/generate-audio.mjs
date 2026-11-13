@@ -57,16 +57,35 @@ const hex = (s) => Array.from(s).map((c) => c.codePointAt(0).toString(16)).join(
 /** Must match AudioBucket in src/lib/audio.ts. */
 const BUCKETS = ["name", "sound", "syl", "word"];
 
+/**
+ * Extra voices for the clips the app uses to ask "which letter is this".
+ *
+ * One recording per letter teaches the recording, not the sound — the student
+ * learns to tell two waveforms apart and it does not carry to a real speaker.
+ * Set TTS_VOICES to a comma-separated list and the second voice onward is
+ * written beside the first as `-v2`, `-v3`; the app then picks one at random
+ * per question. Only the letter names and demo syllables get this: the 399
+ * syllables are for reading practice, where one steady voice is fine.
+ */
+const VARIED_BUCKETS = new Set(["name", "sound"]);
+/** Filled in main(), once the .env files have been read. */
+let VOICES = [];
+
 // --- Build the job list -----------------------------------------------------
 async function buildJobs() {
   const raw = await readFile(join(ROOT, "src", "data", "pronunciations.json"), "utf8");
   const { letters, words = [] } = JSON.parse(raw);
 
-  /** @type {Map<string, {bucket: string, text: string}>} */
+  /** @type {Map<string, {bucket: string, text: string, voice?: string}>} */
   const jobs = new Map();
   const add = (bucket, text) => {
     if (!text) return;
-    jobs.set(`${bucket}/${hex(text)}`, { bucket, text });
+    jobs.set(`${bucket}/${hex(text)}`, { bucket, text, voice: VOICES[0] });
+    // Second voice onward lands beside the first as -v2, -v3 …
+    if (!VARIED_BUCKETS.has(bucket)) return;
+    for (let i = 1; i < VOICES.length; i++) {
+      jobs.set(`${bucket}/${hex(text)}-v${i + 1}`, { bucket, text, voice: VOICES[i] });
+    }
   };
 
   for (const [, p] of Object.entries(letters)) {
@@ -92,9 +111,9 @@ async function buildJobs() {
 const RATE = 0.85;
 
 const providers = {
-  async google(text) {
+  async google(text, voice) {
     const key = requireEnv("GOOGLE_TTS_API_KEY");
-    const voice = process.env.GOOGLE_TTS_VOICE || "ko-KR-Neural2-A";
+    const name = voice || process.env.GOOGLE_TTS_VOICE || "ko-KR-Neural2-A";
     const res = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(key)}`,
       {
@@ -102,7 +121,7 @@ const providers = {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           input: { text },
-          voice: { languageCode: "ko-KR", name: voice },
+          voice: { languageCode: "ko-KR", name },
           audioConfig: { audioEncoding: "MP3", speakingRate: RATE, sampleRateHertz: 24000 },
         }),
       },
@@ -112,13 +131,13 @@ const providers = {
     return Buffer.from(audioContent, "base64");
   },
 
-  async azure(text) {
+  async azure(text, voice) {
     const key = requireEnv("AZURE_SPEECH_KEY");
     const region = requireEnv("AZURE_SPEECH_REGION");
-    const voice = process.env.AZURE_TTS_VOICE || "ko-KR-SunHiNeural";
+    const name = voice || process.env.AZURE_TTS_VOICE || "ko-KR-SunHiNeural";
     const ssml =
       `<speak version="1.0" xml:lang="ko-KR">` +
-      `<voice name="${voice}"><prosody rate="${Math.round((RATE - 1) * 100)}%">` +
+      `<voice name="${name}"><prosody rate="${Math.round((RATE - 1) * 100)}%">` +
       escapeXml(text) +
       `</prosody></voice></speak>`;
     const res = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
@@ -135,9 +154,9 @@ const providers = {
     return Buffer.from(await res.arrayBuffer());
   },
 
-  async elevenlabs(text) {
+  async elevenlabs(text, voiceOverride) {
     const key = requireEnv("ELEVENLABS_API_KEY");
-    const voiceId = requireEnv("ELEVENLABS_VOICE_ID");
+    const voiceId = voiceOverride || requireEnv("ELEVENLABS_VOICE_ID");
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: "POST",
       headers: { "xi-api-key": key, "content-type": "application/json" },
@@ -210,6 +229,11 @@ async function withRetry(fn, label) {
 async function main() {
   await loadEnv();
 
+  VOICES = (process.env.TTS_VOICES || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
   const providerName = (process.env.TTS_PROVIDER || "google").toLowerCase();
   const synth = providers[providerName];
   if (!synth) {
@@ -253,7 +277,7 @@ async function main() {
       if (!item) return;
       const [key, job] = item;
       try {
-        const buf = await withRetry(() => synth(job.text), key);
+        const buf = await withRetry(() => synth(job.text, job.voice), key);
         await writeFile(join(OUT, `${key}.mp3`), buf);
       } catch (err) {
         failed++;
