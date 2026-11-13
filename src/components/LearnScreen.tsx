@@ -14,7 +14,7 @@ import { PATH_DAYS, type PathDay } from "@/data/path";
 import type { Progress } from "@/lib/progress";
 import { useSrs } from "@/lib/srs";
 import { buildSession, DayFlow, type DaySession } from "./DayFlow";
-import { card, eyebrow, primary } from "./learnUi";
+import { card, eyebrow, primary, quiet } from "./learnUi";
 import { C, KO } from "./theme";
 
 /** A numbered stop on the path, with the line that joins it to its neighbours. */
@@ -57,7 +57,8 @@ function Stop({
 }
 
 export function LearnScreen({ progress }: { progress: Progress }) {
-  const { srs, ready, note, gradeDay, finishDay } = useSrs();
+  const { srs, ready, note, gradeDay, finishDay, reset } = useSrs();
+  const [confirming, setConfirming] = useState(false);
 
   /**
    * The open day's exercises are frozen when it starts. Rebuilding them from
@@ -291,6 +292,65 @@ export function LearnScreen({ progress }: { progress: Progress }) {
         </div>
       )}
 
+      {/* Wiping fourteen days of record cannot be undone, so the button asks
+          once before it does it. */}
+      {confirming ? (
+        <section style={{ ...card, borderColor: C.badBorder, background: C.badRed }}>
+          <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}>
+            ลบความคืบหน้าทั้งหมดของเส้นทาง
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#7A6472", lineHeight: 1.55 }}>
+            กลับไปเริ่มวันที่ 1 · ผลของทุกวัน กล่องความจำ และรายการคู่ที่สับสนจะหายไป
+            กู้คืนไม่ได้ · บัตรคำกับเกมไม่ถูกแตะ
+          </div>
+          <div style={{ display: "flex", gap: 9, marginTop: 13 }}>
+            <button
+              type="button"
+              style={{ ...quiet, flex: 1 }}
+              onClick={() => setConfirming(false)}
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              style={{
+                flex: 1,
+                border: `2px solid ${C.badBorder}`,
+                background: C.surface,
+                color: "#9E5A5A",
+                borderRadius: 16,
+                padding: "12px 16px",
+                fontSize: 13,
+                fontWeight: 800,
+                cursor: "pointer",
+                minHeight: 44,
+              }}
+              onClick={() => {
+                reset();
+                setConfirming(false);
+              }}
+            >
+              ลบแล้วเริ่มใหม่
+            </button>
+          </div>
+        </section>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          style={{
+            border: "none",
+            background: "transparent",
+            color: C.inkFaintest,
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "6px 0 2px",
+            cursor: "pointer",
+          }}
+        >
+          เริ่มเส้นทางใหม่ตั้งแต่วันที่ 1
+        </button>
+      )}
     </div>
   );
 }
