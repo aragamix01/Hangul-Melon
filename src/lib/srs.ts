@@ -21,8 +21,17 @@ import type { Confusions } from "./similarity";
 const KEY = "hangul-melon:srs:v1";
 const PROGRESS_KEY = "hangul-melon:progress:v1";
 
-/** Days until a card in box n comes back. Box 1 is same-day. */
-const INTERVALS = [0, 0, 1, 3, 7, 16, 35];
+/**
+ * Days until a card in box n comes back. Box 1 is same-day.
+ *
+ * The course is fourteen days long, so the ladder has to fit inside it. At the
+ * textbook intervals a letter answered right three times is parked for 16 days
+ * and never seen again before the end — which is how the hard letters were
+ * disappearing after one good day. The top rung is 11 days instead, so a
+ * letter met on day 1 comes back on roughly days 2, 4, 8 and 14 whatever
+ * happens, and anything missed restarts the climb the same day.
+ */
+const INTERVALS = [0, 0, 1, 2, 4, 7, 11];
 export const TOP_BOX = INTERVALS.length - 1;
 
 export interface SrsCard {
@@ -32,6 +41,8 @@ export interface SrsCard {
   due: string;
   seen: number;
   wrong: number;
+  /** ISO date this letter was last put in front of the student */
+  last?: string;
 }
 
 export interface DayResult {
@@ -107,6 +118,7 @@ function grade(card: SrsCard | undefined, ok: boolean): SrsCard {
     due: plusDays(INTERVALS[box]),
     seen: base.seen + 1,
     wrong: base.wrong + (ok ? 0 : 1),
+    last: today(),
   };
 }
 
@@ -114,7 +126,51 @@ export function dueKeys(state: SrsState): string[] {
   const d = today();
   return Object.keys(state.cards)
     .filter((ch) => state.cards[ch].due <= d)
-    .sort((a, b) => state.cards[a].box - state.cards[b].box);
+    .sort((a, b) => weakness(state, b) - weakness(state, a));
+}
+
+/**
+ * How much trouble a letter has given, 0–1.
+ *
+ * Due-ness alone sorts by the calendar, which fills a day with whatever was
+ * learned most recently — the easy early letters, over and over, while a
+ * letter that has been missed three times waits its turn. This ranks by how
+ * badly it is going instead: the miss rate, how far down the ladder it sits,
+ * and how often it has been confused with something else.
+ */
+export function weakness(state: SrsState, ch: string): number {
+  const card = state.cards[ch];
+  if (!card) return 1;
+  const missRate = card.seen ? card.wrong / card.seen : 0.5;
+  const low = (TOP_BOX - card.box) / (TOP_BOX - 1);
+  const mixedUp = Object.values(state.confusions[ch] ?? {}).reduce((a, b) => a + b, 0);
+  return 0.5 * missRate + 0.3 * low + 0.2 * Math.min(1, mixedUp / 3);
+}
+
+/**
+ * The letters worth drilling, weakest first, whether or not the calendar says
+ * they are due. `exclude` keeps the day's new letters out.
+ */
+export function weakest(state: SrsState, limit: number, exclude: Set<string> = new Set()): string[] {
+  return Object.keys(state.cards)
+    .filter((ch) => !exclude.has(ch))
+    .sort((a, b) => weakness(state, b) - weakness(state, a))
+    .slice(0, limit);
+}
+
+/**
+ * The letters not seen for longest, oldest first.
+ *
+ * Weakness alone never calls back a letter that has gone well: it sits at the
+ * top of the ladder with eleven days on the clock and, in a fortnight-long
+ * course, is simply never asked again. A review day sweeps by age as well, so
+ * the end of the course touches everything rather than only the sore spots.
+ */
+export function stalest(state: SrsState, limit: number, exclude: Set<string> = new Set()): string[] {
+  return Object.keys(state.cards)
+    .filter((ch) => !exclude.has(ch))
+    .sort((a, b) => (state.cards[a].last ?? "").localeCompare(state.cards[b].last ?? ""))
+    .slice(0, limit);
 }
 
 export function useSrs() {
@@ -130,19 +186,35 @@ export function useSrs() {
   }, []);
 
   /**
-   * Record one answer. `picked` is the letter chosen when it was the wrong one —
-   * that, not the miss itself, is what makes the confusion list personal.
+   * Record which letter was picked instead. That, not the miss itself, is what
+   * makes the confusion list personal, so it is kept per attempt.
    */
-  const answer = useCallback((ch: string, ok: boolean, picked?: string) => {
+  const note = useCallback((ch: string, picked: string) => {
+    if (picked === ch) return;
     setState((prev) => {
-      const cards = { ...prev.cards, [ch]: grade(prev.cards[ch], ok) };
-      let confusions = prev.confusions;
-      if (!ok && picked && picked !== ch) {
-        const row = { ...(confusions[ch] ?? {}) };
-        row[picked] = (row[picked] ?? 0) + 1;
-        confusions = { ...confusions, [ch]: row };
-      }
-      const next = { ...prev, cards, confusions };
+      const row = { ...(prev.confusions[ch] ?? {}) };
+      row[picked] = (row[picked] ?? 0) + 1;
+      const next = { ...prev, confusions: { ...prev.confusions, [ch]: row } };
+      write(next);
+      return next;
+    });
+  }, []);
+
+  /**
+   * Move each letter one rung, once, at the end of a day.
+   *
+   * A letter is asked three or four times in a session — picked out of its
+   * neighbour, traced, typed, read. Grading each of those separately let a
+   * letter climb three boxes in ten minutes and vanish for a fortnight, which
+   * is the opposite of spacing: repeats inside one sitting are one exposure.
+   * So the day reports one verdict per letter, and a letter missed even once
+   * counts as missed.
+   */
+  const gradeDay = useCallback((outcomes: Record<string, boolean>) => {
+    setState((prev) => {
+      const cards = { ...prev.cards };
+      for (const [ch, ok] of Object.entries(outcomes)) cards[ch] = grade(cards[ch], ok);
+      const next = { ...prev, cards };
       write(next);
       return next;
     });
@@ -167,5 +239,5 @@ export function useSrs() {
     setState(EMPTY);
   }, []);
 
-  return { srs: state, ready, answer, finishDay, reset };
+  return { srs: state, ready, note, gradeDay, finishDay, reset };
 }

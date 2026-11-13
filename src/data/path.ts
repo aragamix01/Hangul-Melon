@@ -23,28 +23,39 @@
 
 export interface PathDay {
   day: number;
-  /** New letters introduced this day, in teaching order */
+  /** New letters introduced this day, in teaching order. Empty on review days. */
   chars: string[];
   /** [established, new] — the pair this day drills head to head */
   contrast?: [string, string];
   title: string;
 }
 
+/**
+ * All forty letters arrive inside twelve days, not fourteen.
+ *
+ * Spreading them over the full fortnight looked gentler and was worse: a
+ * letter introduced on day 13 got one exposure before the course ended, and
+ * five review slots a day cannot carry forty letters anyway. Introducing them
+ * by day 12 buys every letter at least two more days of review, and the last
+ * two days carry no new letters at all — they are there to bring back
+ * whatever is still weak, which by then is the compound vowels and the
+ * doubles.
+ */
 export const PATH_DAYS: PathDay[] = [
   { day: 1, chars: ["ㅇ", "ㅏ", "ㅗ"], title: "เริ่มต้น · อ่านได้เลย" },
   { day: 2, chars: ["ㅁ", "ㅣ", "ㅜ"], contrast: ["ㅗ", "ㅜ"], title: "สระตั้งกับสระนอน" },
   { day: 3, chars: ["ㄴ", "ㅓ", "ㅡ"], contrast: ["ㅏ", "ㅓ"], title: "ขีดชี้ออก ขีดชี้เข้า" },
   { day: 4, chars: ["ㅅ", "ㅑ", "ㅛ"], contrast: ["ㅏ", "ㅑ"], title: "ขีดสองอัน = เสียง ย" },
   { day: 5, chars: ["ㄱ", "ㅕ", "ㅠ"], contrast: ["ㅓ", "ㅕ"], title: "เสียง ย ครบชุด" },
-  { day: 6, chars: ["ㄷ", "ㅂ", "ㅐ"], contrast: ["ㅁ", "ㅂ"], title: "ปากปิดกับปากเปิด" },
-  { day: 7, chars: ["ㄹ", "ㅈ", "ㅔ"], contrast: ["ㄷ", "ㄹ"], title: "ลิ้นแตะกับลิ้นสะบัด" },
-  { day: 8, chars: ["ㅎ", "ㅋ", "ㅒ"], contrast: ["ㄱ", "ㅋ"], title: "เติมขีด = พ่นลม" },
-  { day: 9, chars: ["ㅌ", "ㅊ", "ㅖ"], contrast: ["ㅈ", "ㅊ"], title: "พ่นลมครบชุด" },
-  { day: 10, chars: ["ㅍ", "ㄲ", "ㅘ"], contrast: ["ㅂ", "ㅍ"], title: "ตัวคู่ตัวแรก" },
-  { day: 11, chars: ["ㄸ", "ㅃ", "ㅝ"], contrast: ["ㄷ", "ㄸ"], title: "เกร็งคอแล้วดีด" },
-  { day: 12, chars: ["ㅆ", "ㅉ", "ㅚ"], contrast: ["ㅅ", "ㅆ"], title: "ตัวคู่ครบ 5 ตัว" },
-  { day: 13, chars: ["ㅟ", "ㅢ", "ㅙ"], contrast: ["ㅗ", "ㅚ"], title: "สระประสมเสียง ว" },
-  { day: 14, chars: ["ㅞ"], contrast: ["ㅙ", "ㅞ"], title: "ปิดท้าย · ทบทวนรวม" },
+  { day: 6, chars: ["ㄷ", "ㅂ", "ㅐ", "ㅎ"], contrast: ["ㅁ", "ㅂ"], title: "ปากปิดกับปากเปิด" },
+  { day: 7, chars: ["ㄹ", "ㅈ", "ㅔ", "ㅋ"], contrast: ["ㅐ", "ㅔ"], title: "คู่ที่หูแยกยากที่สุด" },
+  { day: 8, chars: ["ㅌ", "ㅊ", "ㅒ", "ㅍ"], contrast: ["ㄱ", "ㅋ"], title: "เติมขีด = พ่นลม" },
+  { day: 9, chars: ["ㄲ", "ㅖ", "ㅘ"], contrast: ["ㅈ", "ㅊ"], title: "ตัวคู่ตัวแรก" },
+  { day: 10, chars: ["ㄸ", "ㅃ", "ㅝ", "ㅚ"], contrast: ["ㄷ", "ㄸ"], title: "เกร็งคอแล้วดีด" },
+  { day: 11, chars: ["ㅆ", "ㅉ", "ㅟ", "ㅙ"], contrast: ["ㅅ", "ㅆ"], title: "ตัวคู่ครบ 5 ตัว" },
+  { day: 12, chars: ["ㅢ", "ㅞ"], contrast: ["ㅙ", "ㅞ"], title: "สระประสมตัวสุดท้าย" },
+  { day: 13, chars: [], title: "ทบทวนรวม · ไม่มีตัวใหม่" },
+  { day: 14, chars: [], title: "วันสุดท้าย · วัดผลตัวเอง" },
 ];
 
 /** Which day a letter is introduced on. */

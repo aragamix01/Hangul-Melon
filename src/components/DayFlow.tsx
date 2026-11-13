@@ -15,7 +15,7 @@ import { JAMO_BY_CHAR, VOICING, type Jamo } from "@/data/hangul";
 import { compose, thaiSyllable, READABLE_VOWELS, type PathDay } from "@/data/path";
 import { speakKo, stopAudio } from "@/lib/audio";
 import { ALL_JAMO, distractorsFor, traceScore, type Point } from "@/lib/similarity";
-import { dueKeys, type SrsState } from "@/lib/srs";
+import { dueKeys, stalest, weakest, weakness, type SrsState } from "@/lib/srs";
 import { C, KO } from "./theme";
 import { card, eyebrow, Glyph, primary, quiet, SoundButton, SpeakerGlyph, StepHeader } from "./learnUi";
 
@@ -112,23 +112,49 @@ export function buildSession(day: PathDay, srs: SrsState): DaySession {
   const fresh = day.chars.map((ch) => JAMO_BY_CHAR[ch]).filter(Boolean);
   const freshSet = new Set(day.chars);
 
-  const due = dueKeys(srs)
-    .filter((ch) => JAMO_BY_CHAR[ch] && !freshSet.has(ch))
-    .slice(0, 5)
-    .map((ch) => JAMO_BY_CHAR[ch]);
-
   const known = Object.keys(srs.cards)
     .filter((ch) => JAMO_BY_CHAR[ch])
     .map((ch) => JAMO_BY_CHAR[ch]);
   const pool = [...known, ...fresh];
+
+  /**
+   * Review is the weakest letters first, not whatever the calendar turned up,
+   * and there are more slots as the alphabet grows: five is generous on day 2
+   * and nowhere near enough on day 12. A day with no new letters is review all
+   * the way down. If fewer letters are due than there are slots, the rest go to
+   * whatever is going worst — a letter that keeps being missed should not have
+   * to wait for its date to come round.
+   */
+  // Fourteen days and forty letters only works if the later days carry more:
+  // three new letters plus five old ones leaves two thirds of the alphabet
+  // untouched on any given day. The two review days take twenty each, which is
+  // what it costs to sweep all forty between them.
+  const cap = day.chars.length ? Math.min(10, 3 + Math.ceil(known.length / 5)) : 20;
+  const dueNow = dueKeys(srs).filter((ch) => JAMO_BY_CHAR[ch] && !freshSet.has(ch));
+  const struggling = weakest(srs, cap, freshSet);
+  // A review day also sweeps by age, or the letters that went well are never
+  // asked again before the fortnight is out.
+  const forgotten = day.chars.length ? [] : stalest(srs, cap, freshSet);
+  const due = [...new Set([...forgotten, ...dueNow, ...struggling])]
+    .filter((ch) => JAMO_BY_CHAR[ch])
+    .slice(0, cap)
+    .map((ch) => JAMO_BY_CHAR[ch]);
 
   const contrast: [Jamo, Jamo] | null = day.contrast
     ? [JAMO_BY_CHAR[day.contrast[0]], JAMO_BY_CHAR[day.contrast[1]]]
     : null;
 
   // Every letter in play, each asked against the one it is most confusable
-  // with — a two-way choice where elimination tells the student nothing.
-  const asked = [...fresh, ...due].slice(0, 8);
+  // with — a two-way choice where elimination tells the student nothing. The
+  // day's own contrast pair comes round twice more, since one correct guess
+  // between two look-alikes proves very little.
+  const asked = [...fresh, ...due].slice(0, day.chars.length ? 10 : 20);
+  if (day.contrast) {
+    const [older, newer] = day.contrast;
+    if (JAMO_BY_CHAR[older] && JAMO_BY_CHAR[newer]) {
+      asked.push(JAMO_BY_CHAR[older], JAMO_BY_CHAR[newer]);
+    }
+  }
   const pairs: PairQuestion[] = asked
     .map((answer) => {
       // Early days hold too few letters of one kind to supply a decoy, so fall
@@ -140,7 +166,27 @@ export function buildSession(day: PathDay, srs: SrsState): DaySession {
     })
     .filter((q): q is PairQuestion => q !== null);
 
-  const type = pool.filter((j) => (srs.cards[j.ch]?.box ?? 0) >= 3).slice(0, 4);
+  /**
+   * Typing used to take the first four letters with a card in box 3 or above,
+   * in whatever order the record happened to list them — which is the order
+   * they were first learned, so it asked for 기역 디귿 이응 every day for a
+   * fortnight. Now any letter past its first day qualifies, the weakest dozen
+   * are the candidates, and four of those are drawn at random, so a letter
+   * that is going badly turns up often and the set still changes daily.
+   */
+  const established = known.filter((j) => !freshSet.has(j.ch) && (srs.cards[j.ch]?.box ?? 0) >= 2);
+  const typeCandidates = (established.length ? established : known.filter((j) => !freshSet.has(j.ch)))
+    .slice()
+    .sort((a, b) => weakness(srs, b.ch) - weakness(srs, a.ch))
+    .slice(0, 12);
+  const type = shuffle(typeCandidates).slice(0, 4);
+
+  // The worst letters so far get written by hand again alongside the new ones,
+  // and on a review day they are the whole exercise.
+  const byHand = weakest(srs, day.chars.length ? 1 : 4, freshSet)
+    .filter((ch) => JAMO_BY_CHAR[ch])
+    .map((ch) => JAMO_BY_CHAR[ch]);
+  const trace = [...fresh.slice(0, 4), ...byHand];
 
   const leads = pool.filter((j) => j.kind === "consonant");
   const medials = pool.filter((j) => j.kind === "vowel" && READABLE_VOWELS.includes(j.ch));
@@ -151,10 +197,10 @@ export function buildSession(day: PathDay, srs: SrsState): DaySession {
     review: due,
     contrast,
     pairs,
-    trace: fresh.slice(0, 3),
+    trace,
     type,
     words,
-    total: pairs.length + fresh.slice(0, 3).length + type.length + words.length,
+    total: pairs.length + trace.length + type.length + words.length,
   };
 }
 
@@ -164,7 +210,8 @@ export function DayFlow({
   day,
   session,
   replay,
-  onAnswer,
+  onNote,
+  onGradeDay,
   onFinish,
   onExit,
 }: {
@@ -172,7 +219,8 @@ export function DayFlow({
   session: DaySession;
   /** True when this day was already finished and is being run again */
   replay?: boolean;
-  onAnswer: (ch: string, ok: boolean, picked?: string) => void;
+  onNote: (ch: string, picked: string) => void;
+  onGradeDay: (outcomes: Record<string, boolean>) => void;
   onFinish: (right: number, total: number) => void;
   onExit: () => void;
 }) {
@@ -180,15 +228,23 @@ export function DayFlow({
   const [right, setRight] = useState(0);
   const [asked, setAsked] = useState(0);
 
+  /**
+   * One verdict per letter for the whole day, applied once at the end. A
+   * letter is asked three or four times in a session and grading each of
+   * those moved it up three boxes in ten minutes.
+   */
+  const outcomes = useRef<Record<string, boolean>>({});
+
   useEffect(() => stopAudio(), [phase]);
 
   const score = useCallback(
     (ch: string, ok: boolean, picked?: string) => {
       setAsked((n) => n + 1);
       if (ok) setRight((n) => n + 1);
-      onAnswer(ch, ok, picked);
+      outcomes.current[ch] = (outcomes.current[ch] ?? true) && ok;
+      if (!ok && picked) onNote(ch, picked);
     },
-    [onAnswer],
+    [onNote],
   );
 
   const after = useCallback(
@@ -207,7 +263,14 @@ export function DayFlow({
   );
 
   if (phase === "brief") {
-    return <Brief day={day} session={session} onStart={() => setPhase("meet")} onExit={onExit} />;
+    return (
+      <Brief
+        day={day}
+        session={session}
+        onStart={() => setPhase(session.fresh.length ? "meet" : "pairs")}
+        onExit={onExit}
+      />
+    );
   }
   if (phase === "meet") {
     return (
@@ -268,6 +331,7 @@ export function DayFlow({
       asked={asked}
       replay={replay}
       onClose={() => {
+        onGradeDay(outcomes.current);
         onFinish(right, asked);
         onExit();
       }}
@@ -316,6 +380,7 @@ function Brief({
         </div>
       </div>
 
+      {session.fresh.length > 0 && (
       <section style={card}>
         <div style={{ fontSize: 13.5, fontWeight: 800 }}>ตัวใหม่ {session.fresh.length} ตัว</div>
         <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
@@ -337,6 +402,7 @@ function Brief({
           ))}
         </div>
       </section>
+      )}
 
       {session.review.length > 0 && (
         <section style={card}>
@@ -382,10 +448,12 @@ function Brief({
       )}
 
       <section style={card}>
-        <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 10 }}>วันนี้ทำ 4 อย่าง</div>
+        <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 10 }}>
+          วันนี้ทำ {session.fresh.length ? 4 : 3} อย่าง
+        </div>
         <div style={{ display: "grid", gap: 9 }}>
           {[
-            "เห็นรูป ฟังเสียง ยังไม่ถูกถาม",
+            ...(session.fresh.length ? ["เห็นรูป ฟังเสียง ยังไม่ถูกถาม"] : []),
             "ฟังแล้วเลือก ตัวลวงคล้ายที่สุด",
             "ไม่มีตัวเลือก ต้องเขียนเอง",
             "อ่านพยางค์ที่ประกอบจากเซ็ต",
@@ -600,7 +668,15 @@ function PairStep({
 
   const options = useMemo(() => shuffle([q.answer, q.other]), [q]);
 
-  const play = useCallback(() => void speakKo(q.answer.nameKo, "name"), [q]);
+  /**
+   * The syllable, not the letter name.
+   *
+   * Korean letter names end in a stop that is never released — 히읗 and 키읔
+   * both finish on an unreleased [k̚] and a synthesiser flattens what is left,
+   * so the two are genuinely near-identical as names. 하 and 카 are not: the
+   * sound being taught is the one in a syllable, and that is what plays here.
+   */
+  const play = useCallback(() => void speakKo(q.answer.demo, "sound"), [q]);
 
   useEffect(() => {
     setPicked(null);
@@ -679,6 +755,36 @@ function PairStep({
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#7A6472", lineHeight: 1.55 }}>
               {q.answer.ch} {q.answer.hint}
             </div>
+            {/* Hearing the two back to back is the only thing that separates a
+                pair the ear keeps merging, so both are one tap away. */}
+            <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
+              {options.map((opt) => (
+                <button
+                  key={opt.ch}
+                  type="button"
+                  onClick={() => void speakKo(opt.demo, "sound")}
+                  style={{
+                    flex: 1,
+                    border: `2px solid ${opt.ch === q.answer.ch ? C.blueBorderStrong : C.border}`,
+                    background: opt.ch === q.answer.ch ? C.blueTint : C.surface,
+                    borderRadius: 14,
+                    padding: "10px 8px",
+                    fontSize: 13.5,
+                    fontWeight: 800,
+                    color: C.ink,
+                    cursor: "pointer",
+                    minHeight: 44,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 7,
+                  }}
+                >
+                  <SpeakerGlyph size={16} />
+                  <span style={{ fontFamily: KO }}>{opt.demo}</span>
+                </button>
+              ))}
+            </div>
           </section>
         )}
 
@@ -724,7 +830,7 @@ function TraceStep({
     setCurrent(null);
     setResult(null);
     setReveal(false);
-    const t = setTimeout(() => void speakKo(j.nameKo, "name"), 250);
+    const t = setTimeout(() => void speakKo(j.demo, "sound"), 250);
     return () => clearTimeout(t);
   }, [j]);
 
@@ -789,8 +895,10 @@ function TraceStep({
       <div style={{ display: "grid", gap: 12 }}>
         <section style={{ ...card, display: "grid", justifyItems: "center", gap: 12, borderRadius: 26 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, width: "100%" }}>
-            <SoundButton size={56} onClick={() => void speakKo(j.nameKo, "name")} />
-            <div style={{ fontSize: 14, fontWeight: 800 }}>เขียนตัวที่ได้ยิน</div>
+            <SoundButton size={56} onClick={() => void speakKo(j.demo, "sound")} />
+            <div style={{ fontSize: 14, fontWeight: 800 }}>
+              {j.kind === "consonant" ? "เขียนพยัญชนะต้นที่ได้ยิน" : "เขียนสระที่ได้ยิน"}
+            </div>
           </div>
 
           <div style={{ position: "relative", width: 196, height: 196 }}>
@@ -887,7 +995,7 @@ function TypeStep({
   useEffect(() => {
     setTyped("");
     setResult(null);
-    const t = setTimeout(() => void speakKo(j.nameKo, "name"), 250);
+    const t = setTimeout(() => void speakKo(j.demo, "sound"), 250);
     return () => clearTimeout(t);
   }, [j]);
 
@@ -912,8 +1020,10 @@ function TypeStep({
 
       <div style={{ display: "grid", gap: 11 }}>
         <section style={{ ...card, display: "flex", alignItems: "center", gap: 14, borderRadius: 24 }}>
-          <SoundButton size={60} onClick={() => void speakKo(j.nameKo, "name")} />
-          <div style={{ fontSize: 14.5, fontWeight: 800 }}>พิมพ์ตัวที่ได้ยิน</div>
+          <SoundButton size={60} onClick={() => void speakKo(j.demo, "sound")} />
+          <div style={{ fontSize: 14.5, fontWeight: 800 }}>
+            {j.kind === "consonant" ? "พิมพ์พยัญชนะต้นที่ได้ยิน" : "พิมพ์สระที่ได้ยิน"}
+          </div>
         </section>
 
         <section style={{ ...card, borderColor: C.borderStrong, display: "grid", justifyItems: "center", gap: 9, borderRadius: 24 }}>
@@ -1134,9 +1244,11 @@ function DoneStep({
       </div>
 
       <section style={card}>
-        <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 11 }}>ตัวใหม่ของวันนี้</div>
+        <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 11 }}>
+          {session.fresh.length ? "ตัวใหม่ของวันนี้" : "ตัวที่ทบทวนวันนี้"}
+        </div>
         <div style={{ display: "grid", gap: 9 }}>
-          {session.fresh.map((j) => (
+          {(session.fresh.length ? session.fresh : session.review.slice(0, 5)).map((j) => (
             <div key={j.ch} style={{ display: "flex", alignItems: "center", gap: 11 }}>
               <span style={{ fontFamily: KO, fontSize: 25, width: 34, textAlign: "center" }}>{j.ch}</span>
               <div style={{ flexGrow: 1, fontSize: 12, fontWeight: 700, color: "#7A6472" }}>{shortThai(j)}</div>

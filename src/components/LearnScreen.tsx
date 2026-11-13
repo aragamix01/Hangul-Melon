@@ -57,7 +57,7 @@ function Stop({
 }
 
 export function LearnScreen({ progress }: { progress: Progress }) {
-  const { srs, ready, answer, finishDay } = useSrs();
+  const { srs, ready, note, gradeDay, finishDay } = useSrs();
 
   /**
    * The open day's exercises are frozen when it starts. Rebuilding them from
@@ -82,7 +82,8 @@ export function LearnScreen({ progress }: { progress: Progress }) {
         day={open.day}
         session={open.session}
         replay={!!srs.days[String(open.day.day)]}
-        onAnswer={answer}
+        onNote={note}
+        onGradeDay={gradeDay}
         onFinish={(right, total) => finishDay(open.day.day, right, total)}
         onExit={() => setOpen(null)}
       />
@@ -176,6 +177,24 @@ export function LearnScreen({ progress }: { progress: Progress }) {
           </div>
 
           <div style={{ display: "flex", gap: 7, marginTop: 11 }}>
+            {today.chars.length === 0 && (
+              <div
+                style={{
+                  flex: 1,
+                  background: C.purpleTint,
+                  border: `2px solid ${C.purpleBorder}`,
+                  borderRadius: 14,
+                  padding: "9px 10px",
+                  fontSize: 12.5,
+                  fontWeight: 800,
+                  color: "#6F5C8C",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                ไม่มีตัวใหม่ · ทบทวนล้วน
+              </div>
+            )}
             {today.chars.map((ch) => (
               <div
                 key={ch}
